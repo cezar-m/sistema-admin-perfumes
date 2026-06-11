@@ -1,14 +1,13 @@
 const mysql = require('mysql2/promise');
 require('dotenv').config();
 
-// Verifica se existe a variável DATABASE_URL (Render) ou usa os parâmetros separados (local)
 let poolConfig;
 
 if (process.env.DATABASE_URL) {
-  // Modo produção (Render, Railway, etc.) – usa string de conexão única
+  // Produção (Render)
   poolConfig = process.env.DATABASE_URL;
 } else {
-  // Modo desenvolvimento local – usa variáveis separadas
+  // Desenvolvimento local
   poolConfig = {
     host: process.env.DB_HOST,
     user: process.env.DB_USER,
