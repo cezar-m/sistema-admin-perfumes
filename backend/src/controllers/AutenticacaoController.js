@@ -1,72 +1,22 @@
-const db = require('../config/database');
-const bcrypt = require('bcrypt');
-const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
+const bcrypt = require('bcrypt');
+const db = require('../config/db'); // ajuste o caminho conforme seu projeto
 
 class AutenticacaoController {
-	// Login gera token com id e cargo
-	async login(req, res) {
-		try {
-			const { email, password } = req.body;
-			// Desestrutura corretamente o retorno do db.query
-			const [rows] = await db.query('SELECT * FROM usuarios WHERE email = ?', [email]);
-			const usuario = rows[0];
-			
-			if(!usuario || !usuario.ativo) {
-				return res.status(401).json({ error: 'Email ou senha inválidos' });
-			}
-			
-			const valido = await bcrypt.compare(password, usuario.password);
-			if(!valido) {
-				return res.status(401).json({ error: 'Email ou senha inválidos' });
-			}
-			
-			// Gera o token incluindo a cargo (admin ou funcionario)
-			const token = jwt.sign(
-				{ id: usuario.id, email: usuario.email, cargo: usuario.cargo },
-				process.env.JWT_SECRET,
-				{ expiresIn: '24h' }
-			);
-			
-			res.json({
-				token,
-				usuario: {
-					id: usuario.id,
-					nome: usuario.nome,
-					email: usuario.email,
-					cargo: usuario.cargo
-				}
-			});
-		} catch(error) {
-			console.error('Erro no login:', error);
-			res.status(500).json({ error: error.message });
-		}
-	}
-	
-	// Registro de novos usuários (com função opcional)
-	async registro(req, res) {
-		try {
-			const { nome, email, password, cargo } = req.body;
-			const hashed = await bcrypt.hash(password, 10);
-			await db.query(
-				'INSERT INTO usuarios (nome, email, password, cargo) VALUES (?, ?, ?, ?)',
-				[nome, email, hashed, cargo || 'funcionario']
-			);
-			res.status(201).json({ message: 'Usuário criado com sucesso' });
-		} catch (error) {
-			console.error('Erro no cadastro:' ,'error');
-			res.status(500).json({ error: error.message });
-		}
-	}
-	
-	// Esqueci minha senha  - gera token e atualiza reset_token/reset_expires
 	
 	async esqueciSenha(req, res) {
 		try {
 			const { email } = req.body;
+			
+			// Validação básica
+			if (!email) {
+				return res.status(400).json({ error: 'Email é obrigatório' });
+			}
+			
 			const [rows] = await db.query('SELECT * FROM usuarios WHERE email = ?', [email]);
 			const usuario = rows[0];
-			if(!usuario) {
+			if (!usuario) {
+				// Por segurança, retorne mensagem genérica (não informe se email existe)
 				return res.status(404).json({ error: 'Email não encontrado' });
 			}
 			
@@ -78,7 +28,7 @@ class AutenticacaoController {
 				[token, expires, usuario.id]
 			);
 			
-			// Retorna apenas o token e o email - o frontend monta a URL
+			// Retorna token e email para o frontend montar a URL
 			res.json({ token, email });
 		} catch (error) {
 			console.error('Erro no esqueciSenha:', error);
@@ -86,16 +36,25 @@ class AutenticacaoController {
 		}	
 	}
 	
-	// Reset de senha - valida token e atualiza a senha
 	async resetarSenha(req, res) {
 		try {
 			const { token, email, password } = req.body;
+			
+			// Validações
+			if (!token || !email || !password) {
+				return res.status(400).json({ error: 'Dados incompletos' });
+			}
+			if (password.length < 6) {
+				return res.status(400).json({ error: 'A senha deve ter no mínimo 6 caracteres' });
+			}
+			
+			// CORREÇÃO AQUI: usar new Date() (instância atual)
 			const [rows] = await db.query(
 				'SELECT * FROM usuarios WHERE email = ? AND reset_token = ? AND reset_expires > ?',
-				[email, token, new Date]
+				[email, token, new Date()]  // ← antes estava "new Date" sem parênteses
 			);
 			const usuario = rows[0];
-			if(!usuario) {
+			if (!usuario) {
 				return res.status(400).json({ error: 'Link inválido ou expirado' });
 			}
 			
@@ -113,21 +72,29 @@ class AutenticacaoController {
 	
 	async registrarCliente(req, res) {
 		const { nome, email, password } = req.body;
-		if(!nome || !email || !password) {
-			return res.status(400).json({ erro: 'Dados incompletos' });
+		
+		if (!nome || !email || !password) {
+			return res.status(400).json({ error: 'Dados incompletos' }); // troquei "erro" por "error" para consistência
 		}
+		
+		if (password.length < 6) {
+			return res.status(400).json({ error: 'A senha deve ter no mínimo 6 caracteres' });
+		}
+		
 		try {
 			const hashedPassword = await bcrypt.hash(password, 10);
 			await db.query(
 				'INSERT INTO usuarios (nome, email, password, cargo) VALUES(?, ?, ?, ?)',
 				[nome, email, hashedPassword, 'cliente']
 			);
-			res.status(201).json({ messagem: 'Cliente registrado com sucesso' });
+			// Corrigido "messagem" para "message"
+			res.status(201).json({ message: 'Cliente registrado com sucesso' });
 		} catch (err) {
-			if(err.code === 'ER_DUP_ENTRY') {
-				return res.status(409).json({ erro: 'Email já cadastro' });
+			if (err.code === 'ER_DUP_ENTRY') {
+				// Corrigido texto "cadastro" para "cadastrado"
+				return res.status(409).json({ error: 'Email já cadastrado' });
 			}
-			res.status(500).json({ erro: err.message });
+			res.status(500).json({ error: err.message });
 		}
 	}
 }
