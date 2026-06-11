@@ -1,6 +1,6 @@
 const crypto = require('crypto');
 const bcrypt = require('bcrypt');
-const db = require('../config/db'); // ajuste o caminho conforme seu projeto
+const db = require('../config/database');
 
 class AutenticacaoController {
 	
