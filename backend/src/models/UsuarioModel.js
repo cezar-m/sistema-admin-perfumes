@@ -3,18 +3,18 @@ const bcrypt = require('bcrypt');
 
 class UsuarioModel {
 	async findAll() {
-		const [rows] = await db.query('SELECT id, nome, email, cargo, ativo criado_em FROM usuarios ORDER BY criado_em DESC');
-		return rows;
+		const result  = await db.query('SELECT id, nome, email, cargo, ativo criado_em FROM usuarios ORDER BY criado_em DESC');
+		return result.rows;
 	}
 	
 	async findById(id) {
-		const [rows] = await db.query('SELECT id, nome, email, cargo, ativo, FROM usuarios WHERE id = $1', [id]);
-		return rows[0];
+		const result  = await db.query('SELECT id, nome, email, cargo, ativo, FROM usuarios WHERE id = $1', [id]);
+		return result.rows[0];
 	}
 	
 	async findByEmail(email) {
-		const [rows] = await db.query('SELECT * FROM usuarios WHERE email = $1', [email]);
-		return rows[0];
+		const result  = await db.query('SELECT * FROM usuarios WHERE email = $1', [email]);
+		return result.rows[0];
 	}
 	
 	async create(usuarioData) {
@@ -66,12 +66,12 @@ class UsuarioModel {
 	}
 	
 	async updateResetToken(email, token, expiresAt) {
-		await db.query('UPDATE usuarios SET reset_token = $1, reset_expires = $2 WHERE email = $3', [token, expiresAt, email]);
+		await db.query('UPDATE usuarios SET reset_token = $1, reset_expires = $1 WHERE email = $1', [token, expiresAt, email]);
 	}
 	
 	async findByResetToken(token) {
-		const [rows] = await db.query('SELECT * FROM usuarios WHERE reset_token = $1 AND reset_expires > NOW()', [token]);
-		return rows[0];
+		const result  = await db.query('SELECT * FROM usuarios WHERE reset_token = $1 AND reset_expires > NOW()', [token]);
+		return result.rows[0];
 	}
 }
 
