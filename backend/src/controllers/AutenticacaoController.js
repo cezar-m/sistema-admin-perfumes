@@ -74,7 +74,7 @@ class AutenticacaoController {
 			const expires = new Date(Date.now() + 3600000); // 1 hora
 			
 			await db.query(
-				'UPDATE usuarios SET reset_token = $1, reset_expires = $1 WHERE id = $1',
+				'UPDATE usuarios SET reset_token = $1, reset_expires = $2 WHERE id = $3',
 				[token, expires, usuario.id]
 			);
 			
@@ -91,7 +91,7 @@ class AutenticacaoController {
 		try {
 			const { token, email, password } = req.body;
 			const result = await db.query(
-				'SELECT * FROM usuarios WHERE email = $1 AND reset_token = $1 AND reset_expires > $1',
+				'SELECT * FROM usuarios WHERE email = $1 AND reset_token = $2 AND reset_expires > $3',
 				[email, token, new Date]
 			);
 			const usuario = result.rows[0];
@@ -101,7 +101,7 @@ class AutenticacaoController {
 			
 			const hashed = await bcrypt.hash(password, 10);
 			await db.query(
-				'UPDATE usuarios SET password = $1, reset_token = NULL, reset_expires = NULL WHERE id = $1',
+				'UPDATE usuarios SET password = $1, reset_token = NULL, reset_expires = NULL WHERE id = $2',
 				[hashed, usuario.id]
 			);
 			res.json({ message: 'Senha redefinida com sucesso' });
