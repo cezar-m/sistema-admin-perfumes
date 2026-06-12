@@ -161,6 +161,7 @@ class PedidoOnlineModel {
 			     WHERE id = $2`,
 			    [aprovadorId, pedidoId]
 			);
+		   )
 			
 			await client.query('COMMIT');
 			console.log(`Pedido ${pedidoId} aprovado por usuário ${aprovadoPorId}`);
