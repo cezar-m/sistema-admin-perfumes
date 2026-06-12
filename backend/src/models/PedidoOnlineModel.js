@@ -68,7 +68,7 @@ class PedidoOnlineModel {
 				FROM pedidos_online po
 				JOIN usuarios u ON po.cliente_id = u.id
 				WHERE po.status = 'aguardando_aprovacao'
-					OR (po.status != 'aguardando_aprovacao' AND po.aprovado_por_id = ?)
+					OR (po.status != 'aguardando_aprovacao' AND po.aprovado_por_id = $1)
 				ORDER BY po.data_pedido DESC
 			`;
 			params = [usuarioId];
