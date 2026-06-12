@@ -22,6 +22,9 @@ class PerfumeController {
 			console.log('req.usuarioId:', usuarioId);
 			console.log('req.usuarioCargo:', usuarioCargo);
 			console.log('Header Authorization:', req.headers.authorization);
+			console.log('usuarioCargo:', req.usuarioCargo);
+        	console.log('usuarioId:', req.usuarioId);
+
 			
 			// Fallback: se não veio do middleware, tenta extrair do token
 			if(!usuarioId && req.headers.authorization) {
