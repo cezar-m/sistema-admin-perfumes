@@ -154,14 +154,12 @@ class PedidoOnlineModel {
 			
 			// Atualiza status e registra o aprovador
 			await client.execute(
-				await db.query(
 			    `UPDATE pedidos_online
 			     SET status = 'aprovado',
 			         aprovado_por_id = $1
 			     WHERE id = $2`,
 			    [aprovadorId, pedidoId]
 			);
-		   )
 			
 			await client.query('COMMIT');
 			console.log(`Pedido ${pedidoId} aprovado por usuário ${aprovadoPorId}`);
