@@ -74,7 +74,8 @@ class PedidoOnlineModel {
 			params = [usuarioId];
 		}
 		
-		const [rows] = await db.execute(sql, params);
+		const result = await db.query(sql, params);
+		const rows = result.rows;
 		
 		// Buscar itens para cada pedido
 		for(let pedido of rows) {
@@ -92,14 +93,14 @@ class PedidoOnlineModel {
 	// Criar pedido (sem alterações)
 	static async criar(pedido) {
 		const { cliente_id, total, forma_pagamento, dados_transacao, endereco_entrega, itens } = pedido;
-		const connection = await db.getConnection();
+		const client = await db.connect();		
 		
 		const enderecoFinal = endereco_entrega 
 		? (typeof endereco_entrega === 'string' ? endereco_entrega : JSON.stringify(endereco_entrega))
 		: null;
 		
 		try {
-			await connection.beginTransaction();
+			await client.query('BEGIN');
 			const [result] = await connection.execute(
 				`INSERT INTO pedidos_online (cliente_id, total, forma_pagamento, endereco_entrega, dados_transacao, status)
 				 VALUES ($1, $2, $3, $4, $5, 'aguardando_aprovacao')`,
@@ -114,21 +115,21 @@ class PedidoOnlineModel {
 					 [pedidoId, item.perfume_id, item.quantidade, item.preco_unitario]
 				);
 			} 
-			await connection.commit();
+			await client.query('COMMIT');
 			return pedidoId;
 		} catch (error) {
-			await connection.rollback();
+			await client.query('ROLLBACK');
 			throw error;
 		} finally {
-			connection.release();
+			client.release();
 		}
 	}
 	
 	// Aprovar pedido - salva quem aprovou
 	static async aprovar(pedidoId, aprovadoPorId) {
-		const connection = await db.getConnection();
+	    const client = await db.connect();
 		try {
-			await connection.beginTransaction();
+			await client.beginTransaction();
 			const [pedido] = await connection.execute(
 				'SELECT status FROM pedidos_online WHERE id = $1',
 				 [pedidoId]
@@ -152,12 +153,12 @@ class PedidoOnlineModel {
 			}
 			
 			// Atualiza status e registra o aprovador
-			await connection.execute(
+			await client.execute(
 				'UPDATE pedidos_online SET status = "aprovado", aprovado_por_id = $1 WHERE id = $2',
 				[aprovadoPorId, pedidoId]
 			);
 			
-			await connection.commit();
+			await client.commit();
 			console.log(`Pedido ${pedidoId} aprovado por usuário ${aprovadoPorId}`);
 			return true;
 		} catch(error) {
