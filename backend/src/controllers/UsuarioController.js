@@ -16,14 +16,14 @@ class UsuarioController {
 		const { id } = req.params;
 		const { nome, email, cargo, ativo, password } = req.body;
 		try {
-			let query = 'UPDATE usuarios SET nome = ?, email = ?, cargo = ?, ativo = ?';
+			let query = 'UPDATE usuarios SET nome = $1, email = $2, cargo = $3, ativo = $4';
 			const params = [nome, email, cargo, ativo];
 			if(password && password.length >= 6) {
 				const hashed = await bcrypt.hash(password, 10);
-				query += ', password = ?';
+				query += ', password = $1';
 				params.push(hashed);
 			}
-			query += ' WHERE id = ?';
+			query += ' WHERE id = $1';
 			params.push(id);
 			await db.query(query, params);
 			res.json({ message: 'Atualizado' });
@@ -46,14 +46,14 @@ class UsuarioController {
 			
 			// 1. Primeiro, deleta as vendas associadas aos perfumes do usuário e também as vendas onde o usuário e vendedor
 			// (para desfazer qualquer dependência antes de deletar perfumes ou usuário)
-			await db.query('DELETE FROM vendas WHERE perfume_id IN (SELECT id FROM perfumes WHERE usuario_id = ?)', [usuarioId]);
-			await db.query('DELETE FROM vendas WHERE vendedor_id = ?', [usuarioId]);
+			await db.query('DELETE FROM vendas WHERE perfume_id IN (SELECT id FROM perfumes WHERE usuario_id = $1)', [usuarioId]);
+			await db.query('DELETE FROM vendas WHERE vendedor_id = $1', [usuarioId]);
 			
 			// 2. Deleta os perfumes do usuário
-			await db.query('DELETE FROM perfumes WHERE usuario_id = ?', [usuarioId]);
+			await db.query('DELETE FROM perfumes WHERE usuario_id = $1', [usuarioId]);
 			
 			// 3. Deleta o usuário
-			const [result] = await db.query('DELETE FROM usuarios WHERE id = ?', [usuarioId]);
+			const [result] = await db.query('DELETE FROM usuarios WHERE id = $1', [usuarioId]);
 			
 			if(result.affectedRows === 0) {
 				await db.query('ROLLBACK');
