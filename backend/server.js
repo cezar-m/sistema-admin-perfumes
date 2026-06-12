@@ -7,7 +7,7 @@ const app = express();
 
 // CORS dinâmico conforme ambiente
 const allowedOrigins = process.env.NODE_ENV === 'production'
-  ? [process.env.FRONTEND_URL || 'https://seu-frontend.onrender.com']
+  ? [process.env.FRONTEND_URL || 'https://sistema-admin-perfumes.vercel.app']
   : ['http://localhost:5173', 'http://localhost:3000'];
 
 app.use(cors({
