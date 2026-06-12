@@ -22,9 +22,6 @@ class PerfumeController {
 			console.log('req.usuarioId:', usuarioId);
 			console.log('req.usuarioCargo:', usuarioCargo);
 			console.log('Header Authorization:', req.headers.authorization);
-			console.log('usuarioCargo:', req.usuarioCargo);
-        	console.log('usuarioId:', req.usuarioId);
-
 			
 			// Fallback: se não veio do middleware, tenta extrair do token
 			if(!usuarioId && req.headers.authorization) {
@@ -63,9 +60,10 @@ class PerfumeController {
 			// Funcionário: apenas os perfumes que ele mesmo cadastrou
 			else {
 				console.log(`Funcionário ${usuarioId}: retornando apenas perfumes com usuario_id = ${usuarioId}`);
+				const values = [usuarioId];
 				const result = await db.query(
 					'SELECT * FROM perfumes WHERE usuario_id = $1 ORDER BY criado_em DESC',
-					[usuarioId]
+					values
 				);
 				perfumes = result.rows;
 			}
@@ -95,7 +93,7 @@ class PerfumeController {
 					 VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
 					[nome, descricao, preco, quantidade, familia, genero, imagem, usuario_id]
 				);
-				res.status(201).json({ id: result.insertId, message: 'Perfume cadastrado' });
+				res.status(201).json({ id: result.rows[0].id, message: 'Perfume cadastrado' });
 			} catch (error) {
 				console.error(error);
 				res.status(500).json({ error: error.message });
@@ -130,7 +128,7 @@ class PerfumeController {
 
 			try {
 				const result = await db.query(query, params);
-				if(result.affectedRows === 0) {
+				if(result.rowCount  === 0) {
 					return res.status(403).json({ error: 'Não autorizado ou perfume não existe' });
 				}
 				res.json({ message: 'Perfume atualizado' });
