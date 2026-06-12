@@ -23,7 +23,7 @@ class PerfumeModel {
 			VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
 			[nome, descricao, preco, quantidade, familia, genero, imagem, usuario_id]
 		);
-		return result.insertId;
+		return result.rows[0].id;
 	}
 	
 	async update(id, data, usuario_id) {
