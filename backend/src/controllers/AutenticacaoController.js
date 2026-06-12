@@ -64,8 +64,8 @@ class AutenticacaoController {
 	async esqueciSenha(req, res) {
 		try {
 			const { email } = req.body;
-			const [rows] = await db.query('SELECT * FROM usuarios WHERE email = $1', [email]);
-			const usuario = rows[0];
+			const result = await db.query('SELECT * FROM usuarios WHERE email = $1', [email]);
+			const usuario = result.rows[0];
 			if(!usuario) {
 				return res.status(404).json({ error: 'Email não encontrado' });
 			}
@@ -90,11 +90,11 @@ class AutenticacaoController {
 	async resetarSenha(req, res) {
 		try {
 			const { token, email, password } = req.body;
-			const [rows] = await db.query(
+			const result = await db.query(
 				'SELECT * FROM usuarios WHERE email = $1 AND reset_token = $1 AND reset_expires > $1',
 				[email, token, new Date]
 			);
-			const usuario = rows[0];
+			const usuario = result.rows[0];
 			if(!usuario) {
 				return res.status(400).json({ error: 'Link inválido ou expirado' });
 			}
