@@ -32,12 +32,12 @@ class UsuarioModel {
 		if (password) {
 			const hashedPassword = await bcrypt.hash(password, 10);
 			await db.query(
-				'UPDATE usuarios SET nome = $1, email = $2, cargo = $3, ativo = $4, password = $5 WHERE id = $6',
+				'UPDATE usuarios SET nome = $1, email = $2, cargo = $3, ativo = $4, password = $1 WHERE id = $1',
 				[nome, email, cargo, ativo, hashedPassword, id]
 			);
 		} else {
 			await db.query(
-				'UPDATE usuarios SET nome = $1, email = $2, cargo = $3, ativo = $4 WHERE id = $5',
+				'UPDATE usuarios SET nome = $1, email = $2, cargo = $3, ativo = $4 WHERE id = $1',
 				[nome, email, cargo, ativo, id]
 			);
 		}
