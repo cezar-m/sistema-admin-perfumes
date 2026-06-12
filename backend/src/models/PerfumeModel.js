@@ -35,7 +35,7 @@ class PerfumeModel {
 			query += ', imagem = $7';
 			params.push(imagem);
 		}
-		query += ' WHERE id = $1 AND usuario_id = $2';
+		query += ' WHERE id = $8 AND usuario_id = $9';
 		params.push(id, usuario_id);
 		const result = await db.query(query, params);
 		return result.rowCount  > 0;
@@ -49,7 +49,7 @@ class PerfumeModel {
 			params.push(usuario_id);
 		}
 		const result = await db.query(query, params);
-		return result.affectedRows > 0;
+		return result.rowCount > 0;
 	}
 	
 	async updateStock(id, quantidade) {
