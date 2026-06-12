@@ -5,7 +5,7 @@ class PedidoOnlineModel {
 	static async listarPorCliente(clienteId) {
 		const [pedidos] = await db.execute(`
 			SELECT * FROM pedidos_online
-			WHERE cliente_id = ?
+			WHERE cliente_id = $1
 			ORDER BY data_pedido DESC
 		`, [clienteId]);
 		
@@ -20,7 +20,7 @@ class PedidoOnlineModel {
 				perf.nome as nome
 			FROM itens_pedido_online ip
 			JOIN perfumes perf ON ip.perfume_id = perf.id
-			WHERE ip.pedido_id IN (?)
+			WHERE ip.pedido_id IN ($1)
 		`, [ids]);
 		
 		const itensPorPedidos = {};
@@ -82,7 +82,7 @@ class PedidoOnlineModel {
 				SELECT ip.quantidade, ip.preco_unitario, perf.nome as perfume_nome
 				FROM itens_pedido_online ip
 				JOIN perfumes perf ON ip.perfume_id = perf.id
-				WHERE ip.pedido_id = ?
+				WHERE ip.pedido_id = $1
 			`, [pedido.id]);
 			pedido.itens = itens;
 		}
@@ -102,7 +102,7 @@ class PedidoOnlineModel {
 			await connection.beginTransaction();
 			const [result] = await connection.execute(
 				`INSERT INTO pedidos_online (cliente_id, total, forma_pagamento, endereco_entrega, dados_transacao, status)
-				 VALUES (?, ?, ?, ?, ?, 'aguardando_aprovacao')`,
+				 VALUES ($1, $2, $3, $4, $5, 'aguardando_aprovacao')`,
 				 [cliente_id, total, forma_pagamento, enderecoFinal, JSON.stringify(dados_transacao)]
 			);
 			
@@ -110,7 +110,7 @@ class PedidoOnlineModel {
 			for(const item of itens) {
 				await connection.execute(
 					`INSERT INTO itens_pedido_online (pedido_id, perfume_id, quantidade, preco_unitario)
-					 VALUES (?, ?, ?, ?)`,
+					 VALUES ($1, $2, $3, $4)`,
 					 [pedidoId, item.perfume_id, item.quantidade, item.preco_unitario]
 				);
 			} 
@@ -130,20 +130,20 @@ class PedidoOnlineModel {
 		try {
 			await connection.beginTransaction();
 			const [pedido] = await connection.execute(
-				'SELECT status FROM pedidos_online WHERE id = ?',
+				'SELECT status FROM pedidos_online WHERE id = $1',
 				 [pedidoId]
 			);
 			if(pedido.length === 0) throw new Error('Pedido não encontrado');
 			if(pedido[0].status !== 'aguardando_aprovacao') throw new Error('Pedido já processado');
 			
 			const [itens] = await connection.execute(
-				'SELECT perfume_id, quantidade FROM itens_pedido_online WHERE pedido_id = ?',
+				'SELECT perfume_id, quantidade FROM itens_pedido_online WHERE pedido_id = $1',
 				[pedidoId]
 			);
 			
 			for(const item of itens) {
 				const [update] = await connection.execute(
-					'UPDATE perfumes SET quantidade = quantidade - ?  WHERE id = ? AND quantidade >= ?',
+					'UPDATE perfumes SET quantidade = quantidade - $1  WHERE id = $2 AND quantidade >= $3',
 					[item.quantidade, item.perfume_id, item.quantidade]
 				);
 				if(update.affectedRows === 0) {
@@ -153,7 +153,7 @@ class PedidoOnlineModel {
 			
 			// Atualiza status e registra o aprovador
 			await connection.execute(
-				'UPDATE pedidos_online SET status = "aprovado", aprovado_por_id = ? WHERE id = ?',
+				'UPDATE pedidos_online SET status = "aprovado", aprovado_por_id = $1 WHERE id = $2',
 				[aprovadoPorId, pedidoId]
 			);
 			
