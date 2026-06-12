@@ -61,7 +61,7 @@ class PerfumeController {
 			else {
 				console.log(`Funcionário ${usuarioId}: retornando apenas perfumes com usuario_id = ${usuarioId}`);
 				const [rows] = await db.query(
-					'SELECT * FROM perfumes WHERE usuario_id = ? ORDER BY criado_em DESC',
+					'SELECT * FROM perfumes WHERE usuario_id = $1 ORDER BY criado_em DESC',
 					[usuarioId]
 				);
 				perfumes = rows;
@@ -89,7 +89,7 @@ class PerfumeController {
 			try {
 				const result = await db.query(
 					`INSERT INTO perfumes (nome, descricao, preco, quantidade, familia, genero, imagem, usuario_id)
-					 VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+					 VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
 					[nome, descricao, preco, quantidade, familia, genero, imagem, usuario_id]
 				);
 				res.status(201).json({ id: result.insertId, message: 'Perfume cadastrado' });
@@ -108,20 +108,20 @@ class PerfumeController {
 			let imagem = null;
 			if(req.file) imagem = req.file.filename;
 
-			let query = 'UPDATE perfumes SET nome=?, descricao=?, preco=?, quantidade=?, familia=?, genero=?';
+			let query = 'UPDATE perfumes SET nome=$1, descricao=$2, preco=$3, quantidade=$4, familia=$5, genero=$6';
 			let params = [nome, descricao, preco, quantidade, familia, genero];
 
 			if(imagem) {
-				query += ', imagem=?';
+				query += ', imagem=$1';
 				params.push(imagem);
 			}
 
 			// Admin pode editar qualquer perfume; funcionário apenas os seus
 			if (req.usuarioCargo === 'admin') {
-				query += ' WHERE id=?';
+				query += ' WHERE id=$1';
 				params.push(id);
 			} else {
-				query += ' WHERE id=? AND usuario_id=?';
+				query += ' WHERE id=$1 AND usuario_id=$2';
 				params.push(id, req.usuarioId);
 			}
 
@@ -143,10 +143,10 @@ class PerfumeController {
 		const usuarioCargo = req.usuarioCargo;
 		let query, params;
 		if(usuarioCargo === 'admin') {
-			query = 'DELETE FROM perfumes WHERE id = ?';
+			query = 'DELETE FROM perfumes WHERE id = $1';
 			params = [id];
 		} else {
-			query = 'DELETE FROM perfumes WHERE id = ? AND usuario_id = ?';
+			query = 'DELETE FROM perfumes WHERE id = $1 AND usuario_id = $2';
 			params = [id, req.usuarioId];
 		}
 		try {
