@@ -56,8 +56,8 @@ class PerfumeModel {
 	}
 	
 	async getLowStock(limite = 5) {
-		const rows = await db.query('SELECT * FROM perfumes WHERE quantidade <= $1 ORDER BY quantidade ASC' , [limite]);
-		return rows;
+		const result = await db.query('SELECT * FROM perfumes WHERE quantidade <= $1 ORDER BY quantidade ASC' , [limite]);
+		return result.rows;
 	}
 }
 
