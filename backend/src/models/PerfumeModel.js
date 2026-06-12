@@ -7,20 +7,20 @@ class PerfumeModel {
 	}
 	
 	async findByUserId(usuario_id) {
-		const rows = await db.query('SELECT * FROM perfumes WHERE usuario_id = ? ORDER BY criado_em DESC', [usuario_id]);
+		const rows = await db.query('SELECT * FROM perfumes WHERE usuario_id = $1 ORDER BY criado_em DESC', [usuario_id]);
 		return rows;
 	}
 	
 	async findById(id) {
-		const rows = await db.query('SELECT * FROM perfumes WHERE id = ?', [id]);
-		return rows[0];
+		const result = await db.query('SELECT * FROM perfumes WHERE id = $1', [id]);
+		return result.rows[0];
 	}
 	
 	async create(data) {
 		const { nome, descricao, preco, quantidade, familia, genero, imagem, usuario_id } = data;
 		const result = await db.query(
 			`INSERT INTO perfumes (nome, descricao, preco, quantidade, familia, genero, imagem, usuario_id)
-			VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+			VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
 			[nome, descricao, preco, quantidade, familia, genero, imagem, usuario_id]
 		);
 		return result.insertId;
@@ -28,20 +28,20 @@ class PerfumeModel {
 	
 	async update(id, data, usuario_id) {
 		const { nome, descricao, preco, quantidade, familia, genero, imagem } = data;
-		let query = 'UPDATE perfumes SET nome = ?, descricao = ?, preco = ?, quantidade = ?, familia = ?, genero = ?';
+		let query = 'UPDATE perfumes SET nome = $1, descricao = $2, preco = $3, quantidade = $4, familia = $5, genero = $6';
 		const params = [nome, descricao, preco, quantidade, familia, genero];
 		if(imagem) {
-			query += ', imagem = ?';
+			query += ', imagem = $1';
 			params.push(imagem);
 		}
-		query += ' WHERE id = ? AND usuario_id = ?';
+		query += ' WHERE id = $1 AND usuario_id = $2';
 		params.push(id, usuario_id);
 		const result = await db.query(query, params);
 		return result.affectedRows > 0;
 	}
 	
 	async delete(id, usuario_id = null) {
-		let query = 'DELETE FROM perfumes WHERE id = ?';
+		let query = 'DELETE FROM perfumes WHERE id = $1';
 		const params = [id];
 		if(usuario_id) {
 			query += ' AND usuario_id = ?';
@@ -52,11 +52,11 @@ class PerfumeModel {
 	}
 	
 	async updateStock(id, quantidade) {
-		await db.query('UPDATE perfumes SET quantidade = quantidade - ? WHERE id = ?', [quantidadeVendida, id]);
+		await db.query('UPDATE perfumes SET quantidade = quantidade - $1 WHERE id = $2', [quantidadeVendida, id]);
 	}
 	
 	async getLowStock(limite = 5) {
-		const rows = await db.query('SELECT * FROM perfumes WHERE quantidade <= ? ORDER BY quantidade ASC' , [limite]);
+		const rows = await db.query('SELECT * FROM perfumes WHERE quantidade <= $1 ORDER BY quantidade ASC' , [limite]);
 		return rows;
 	}
 }
