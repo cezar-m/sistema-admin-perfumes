@@ -43,8 +43,8 @@ class PerfumeController {
 			// CORREÇÃO: clientes (cargo 'cliente') também veem todos os perfumes
 			if(!usuarioId || usuarioCargo === 'cliente') {
 				console.log('Público ou cliente: retorna TODOS os perfumes');
-				const [rows] = await db.query('SELECT * FROM perfumes ORDER BY criado_em DESC');
-				perfumes = rows;
+				const result = await db.query('SELECT * FROM perfumes ORDER BY criado_em DESC');
+				perfumes = result.rows;
 			}
 			// Admin: todos os perfumes + nome do criador
 			else if(usuarioCargo == 'admin') {
@@ -112,7 +112,7 @@ class PerfumeController {
 			let params = [nome, descricao, preco, quantidade, familia, genero];
 
 			if(imagem) {
-				query += ', imagem=$1';
+				query += ', imagem=$7';
 				params.push(imagem);
 			}
 
@@ -151,7 +151,7 @@ class PerfumeController {
 		}
 		try {
 			const result = await db.query(query, params);
-			if(result.affectedRows === 0) return res.status(403).json({ error: 'Não autorizado' });
+			if(result.rowCount === 0) return res.status(403).json({ error: 'Não autorizado' });
 			res.json({ message: 'Perfume deletado' });
 		} catch (error) {
 			console.error(error);
