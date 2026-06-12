@@ -66,7 +66,7 @@ class UsuarioModel {
 	}
 	
 	async updateResetToken(email, token, expiresAt) {
-		await db.query('UPDATE usuarios SET reset_token = $1, reset_expires = $1 WHERE email = $1', [token, expiresAt, email]);
+		await db.query('UPDATE usuarios SET reset_token = $1, reset_expires = $2 WHERE email = 3', [token, expiresAt, email]);
 	}
 	
 	async findByResetToken(token) {
