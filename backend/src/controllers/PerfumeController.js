@@ -12,6 +12,7 @@ const upload = multer({ storage }).single('imagem');
 
 class PerfumeController {
 	async index(req, res) {
+		 console.log('ENTROU NO INDEX');
 		try {
 			let usuarioId = req.usuarioId;
 			let usuarioCargo = req.usuarioCargo;
