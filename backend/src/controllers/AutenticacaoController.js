@@ -9,8 +9,8 @@ class AutenticacaoController {
 		try {
 			const { email, password } = req.body;
 			// Desestrutura corretamente o retorno do db.query
-			const [rows] = await db.query('SELECT * FROM usuarios WHERE email = $1', [email]);
-			const usuario = rows[0];
+			const result = await db.query('SELECT * FROM usuarios WHERE email = $1', [email]);
+			const usuario = result.rows[0];
 			
 			if(!usuario || !usuario.ativo) {
 				return res.status(401).json({ error: 'Email ou senha inválidos' });
