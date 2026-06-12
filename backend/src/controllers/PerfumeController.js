@@ -90,7 +90,8 @@ class PerfumeController {
 			try {
 				const result = await db.query(
 					`INSERT INTO perfumes (nome, descricao, preco, quantidade, familia, genero, imagem, usuario_id)
-					 VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+					 VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+					 RETURNING id`,
 					[nome, descricao, preco, quantidade, familia, genero, imagem, usuario_id]
 				);
 				res.status(201).json({ id: result.rows[0].id, message: 'Perfume cadastrado' });
@@ -119,7 +120,7 @@ class PerfumeController {
 
 			// Admin pode editar qualquer perfume; funcionário apenas os seus
 			if (req.usuarioCargo === 'admin') {
-				query += ' WHERE id=$1';
+				query += ' WHERE id=$8';
 				params.push(id);
 			} else {
 				query += ' WHERE id=$1 AND usuario_id=$2';
