@@ -52,7 +52,7 @@ class PerfumeModel {
 	}
 	
 	async updateStock(id, quantidade) {
-		await db.query('UPDATE perfumes SET quantidade = quantidade - $1 WHERE id = $2', [quantidadeVendida, id]);
+		await db.query('UPDATE perfumes SET quantidade = quantidade - $1 WHERE id = $2', [quantidade, id]);
 	}
 	
 	async getLowStock(limite = 5) {
