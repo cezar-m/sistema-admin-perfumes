@@ -4,8 +4,8 @@ const bcrypt = require('bcrypt');
 class UsuarioController {
 	async index(req, res) {
 		try {
-			const [rows] = await db.query('SELECT id, nome, email, cargo, ativo FROM usuarios');
-			res.json(rows);
+			const result = await db.query('SELECT id, nome, email, cargo, ativo FROM usuarios');
+			res.json(result.rows);
 		} catch (error) {
 			console.error(error);
 			res.status(500).json({ error: 'Erro ao listar' });
