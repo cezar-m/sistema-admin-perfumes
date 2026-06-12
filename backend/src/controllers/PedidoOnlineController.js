@@ -54,7 +54,7 @@ class PedidoOnlineController {
 		let isAdmin = false;
 		try {
 			const result = await db.query('SELECT cargo FROM usuarios WHERE id = $1', [usuarioId]);
-			if(rows.length && rows.result[0].cargo === 'admin') {
+			if(rows.length && result.rows[0].cargo === 'admin') {
 				isAdmin = true;
 			}
 		} catch (error) {
