@@ -20,7 +20,8 @@ class PerfumeModel {
 		const { nome, descricao, preco, quantidade, familia, genero, imagem, usuario_id } = data;
 		const result = await db.query(
 			`INSERT INTO perfumes (nome, descricao, preco, quantidade, familia, genero, imagem, usuario_id)
-			VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+			VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+			 RETURNING id`,
 			[nome, descricao, preco, quantidade, familia, genero, imagem, usuario_id]
 		);
 		return result.rows[0].id;
@@ -31,20 +32,20 @@ class PerfumeModel {
 		let query = 'UPDATE perfumes SET nome = $1, descricao = $2, preco = $3, quantidade = $4, familia = $5, genero = $6';
 		const params = [nome, descricao, preco, quantidade, familia, genero];
 		if(imagem) {
-			query += ', imagem = $1';
+			query += ', imagem = $7';
 			params.push(imagem);
 		}
 		query += ' WHERE id = $1 AND usuario_id = $2';
 		params.push(id, usuario_id);
 		const result = await db.query(query, params);
-		return result.affectedRows > 0;
+		return result.rowCount  > 0;
 	}
 	
 	async delete(id, usuario_id = null) {
 		let query = 'DELETE FROM perfumes WHERE id = $1';
 		const params = [id];
 		if(usuario_id) {
-			query += ' AND usuario_id = ?';
+			query += ' AND usuario_id = $2';
 			params.push(usuario_id);
 		}
 		const result = await db.query(query, params);
