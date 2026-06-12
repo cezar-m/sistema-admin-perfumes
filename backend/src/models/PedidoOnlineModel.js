@@ -3,7 +3,7 @@ const db = require('../config/database');
 class PedidoOnlineModel {
 	// Cliente vê seus própios pedidos (todos)
 	static async listarPorCliente(clienteId) {
-		const [pedidos] = await db.execute(`
+		const result = await db.query(`
 			SELECT * FROM pedidos_online
 			WHERE cliente_id = $1
 			ORDER BY data_pedido DESC
@@ -101,7 +101,7 @@ class PedidoOnlineModel {
 		
 		try {
 			await client.query('BEGIN');
-			const [result] = await connection.execute(
+			const [result] = await client.execute(
 				`INSERT INTO pedidos_online (cliente_id, total, forma_pagamento, endereco_entrega, dados_transacao, status)
 				 VALUES ($1, $2, $3, $4, $5, 'aguardando_aprovacao')`,
 				 [cliente_id, total, forma_pagamento, enderecoFinal, JSON.stringify(dados_transacao)]
@@ -109,7 +109,7 @@ class PedidoOnlineModel {
 			
 			const pedidoId = result.insertId;
 			for(const item of itens) {
-				await connection.execute(
+				await client.execute(
 					`INSERT INTO itens_pedido_online (pedido_id, perfume_id, quantidade, preco_unitario)
 					 VALUES ($1, $2, $3, $4)`,
 					 [pedidoId, item.perfume_id, item.quantidade, item.preco_unitario]
@@ -129,7 +129,7 @@ class PedidoOnlineModel {
 	static async aprovar(pedidoId, aprovadoPorId) {
 	    const client = await db.connect();
 		try {
-			await client.beginTransaction();
+			await client.query('BEGIN');
 			const [pedido] = await connection.execute(
 				'SELECT status FROM pedidos_online WHERE id = $1',
 				 [pedidoId]
@@ -143,7 +143,7 @@ class PedidoOnlineModel {
 			);
 			
 			for(const item of itens) {
-				const [update] = await connection.execute(
+				const [update] = await client.execute(
 					'UPDATE perfumes SET quantidade = quantidade - $1  WHERE id = $2 AND quantidade >= $3',
 					[item.quantidade, item.perfume_id, item.quantidade]
 				);
@@ -154,18 +154,18 @@ class PedidoOnlineModel {
 			
 			// Atualiza status e registra o aprovador
 			await client.execute(
-				'UPDATE pedidos_online SET status = "aprovado", aprovado_por_id = $1 WHERE id = $2',
+				'UPDATE pedidos_online SET status = 'aprovado', aprovado_por_id = $1 WHERE id = $2',
 				[aprovadoPorId, pedidoId]
 			);
 			
-			await client.commit();
+			await client.query('COMMIT');
 			console.log(`Pedido ${pedidoId} aprovado por usuário ${aprovadoPorId}`);
 			return true;
 		} catch(error) {
-			await connection.rollback();
+			await client.query('ROLLBACK');
 			throw error;
 		} finally {
-			connection.release();
+			çlient.release();
 		}
 	}
 }
