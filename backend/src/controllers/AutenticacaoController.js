@@ -9,7 +9,7 @@ class AutenticacaoController {
 		try {
 			const { email, password } = req.body;
 			// Desestrutura corretamente o retorno do db.query
-			const [rows] = await db.query('SELECT * FROM usuarios WHERE email = ?', [email]);
+			const [rows] = await db.query('SELECT * FROM usuarios WHERE email = $1', [email]);
 			const usuario = rows[0];
 			
 			if(!usuario || !usuario.ativo) {
@@ -49,7 +49,7 @@ class AutenticacaoController {
 			const { nome, email, password, cargo } = req.body;
 			const hashed = await bcrypt.hash(password, 10);
 			await db.query(
-				'INSERT INTO usuarios (nome, email, password, cargo) VALUES (?, ?, ?, ?)',
+				'INSERT INTO usuarios (nome, email, password, cargo) VALUES ($1, $2, $3, $4)',
 				[nome, email, hashed, cargo || 'funcionario']
 			);
 			res.status(201).json({ message: 'Usuário criado com sucesso' });
@@ -64,7 +64,7 @@ class AutenticacaoController {
 	async esqueciSenha(req, res) {
 		try {
 			const { email } = req.body;
-			const [rows] = await db.query('SELECT * FROM usuarios WHERE email = ?', [email]);
+			const [rows] = await db.query('SELECT * FROM usuarios WHERE email = $1', [email]);
 			const usuario = rows[0];
 			if(!usuario) {
 				return res.status(404).json({ error: 'Email não encontrado' });
@@ -74,7 +74,7 @@ class AutenticacaoController {
 			const expires = new Date(Date.now() + 3600000); // 1 hora
 			
 			await db.query(
-				'UPDATE usuarios SET reset_token = ?, reset_expires = ? WHERE id = ?',
+				'UPDATE usuarios SET reset_token = $1, reset_expires = $1 WHERE id = $1',
 				[token, expires, usuario.id]
 			);
 			
@@ -91,7 +91,7 @@ class AutenticacaoController {
 		try {
 			const { token, email, password } = req.body;
 			const [rows] = await db.query(
-				'SELECT * FROM usuarios WHERE email = ? AND reset_token = ? AND reset_expires > ?',
+				'SELECT * FROM usuarios WHERE email = $1 AND reset_token = $1 AND reset_expires > $1',
 				[email, token, new Date]
 			);
 			const usuario = rows[0];
@@ -101,7 +101,7 @@ class AutenticacaoController {
 			
 			const hashed = await bcrypt.hash(password, 10);
 			await db.query(
-				'UPDATE usuarios SET password = ?, reset_token = NULL, reset_expires = NULL WHERE id = ?',
+				'UPDATE usuarios SET password = $1, reset_token = NULL, reset_expires = NULL WHERE id = $1',
 				[hashed, usuario.id]
 			);
 			res.json({ message: 'Senha redefinida com sucesso' });
@@ -119,7 +119,7 @@ class AutenticacaoController {
 		try {
 			const hashedPassword = await bcrypt.hash(password, 10);
 			await db.query(
-				'INSERT INTO usuarios (nome, email, password, cargo) VALUES(?, ?, ?, ?)',
+				'INSERT INTO usuarios (nome, email, password, cargo) VALUES($1, $2, $3, $4)',
 				[nome, email, hashedPassword, 'cliente']
 			);
 			res.status(201).json({ messagem: 'Cliente registrado com sucesso' });
