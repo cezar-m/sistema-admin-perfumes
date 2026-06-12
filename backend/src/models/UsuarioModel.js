@@ -8,12 +8,12 @@ class UsuarioModel {
 	}
 	
 	async findById(id) {
-		const [rows] = await db.query('SELECT id, nome, email, cargo, ativo, FROM usuarios WHERE id = ?', [id]);
+		const [rows] = await db.query('SELECT id, nome, email, cargo, ativo, FROM usuarios WHERE id = $1', [id]);
 		return rows[0];
 	}
 	
 	async findByEmail(email) {
-		const [rows] = await db.query('SELECT * FROM usuarios WHERE email = ?', [email]);
+		const [rows] = await db.query('SELECT * FROM usuarios WHERE email = $1', [email]);
 		return rows[0];
 	}
 	
@@ -21,7 +21,7 @@ class UsuarioModel {
 		const { nome, email, password, cargo } = usuarioData;
 		const hashedPassword = await bcrypt.hash(password, 10);
 		const [result] = await db.query(
-			'INSERT INTO usuarios (nome, email, password, cargo, ativo) VALUES (?, ?, ?, ?, ?)',
+			'INSERT INTO usuarios (nome, email, password, cargo, ativo) VALUES ($1, $2, $3, $4, $5)',
 			[nome, email, hashedPassword, cargo || 'funcionario', 1]
 		);
 		return result.insertId;
@@ -32,12 +32,12 @@ class UsuarioModel {
 		if (password) {
 			const hashedPassword = await bcrypt.hash(password, 10);
 			await db.query(
-				'UPDATE usuarios SET nome = ?, email = ?, cargo = ?, ativo = ?, password = ? WHERE id = ?',
+				'UPDATE usuarios SET nome = $1, email = $2, cargo = $3, ativo = $4, password = $5 WHERE id = $6',
 				[nome, email, cargo, ativo, hashedPassword, id]
 			);
 		} else {
 			await db.query(
-				'UPDATE usuarios SET nome = ?, email = ?, cargo = ?, ativo = ? WHERE id = ?',
+				'UPDATE usuarios SET nome = $1, email = $2, cargo = $3, ativo = $4 WHERE id = $5',
 				[nome, email, cargo, ativo, id]
 			);
 		}
@@ -51,11 +51,11 @@ class UsuarioModel {
 			await connection.beginTransaction();
 			
 			// Deleta perfumes
-			await connection.query('DELETE FROM perfumes WHERE usuario_id = ?', [id]);
+			await connection.query('DELETE FROM perfumes WHERE usuario_id = $1', [id]);
 			// Deleta vendas
-			await connection.query('DELETE FROM vendas WHERE vendedor_id = ?', [id]);
+			await connection.query('DELETE FROM vendas WHERE vendedor_id = $1', [id]);
 			// Deleta usuário
-			const [result] = await connection.query('DELETE FROM usuarios WHERE id = ?', [id]);
+			const [result] = await connection.query('DELETE FROM usuarios WHERE id = $1', [id]);
 			await connection.commit();
 		} catch (error) {
 			await connection.rollback();
@@ -66,11 +66,11 @@ class UsuarioModel {
 	}
 	
 	async updateResetToken(email, token, expiresAt) {
-		await db.query('UPDATE usuarios SET reset_token = ?, reset_expires = ? WHERE email = ?', [token, expiresAt, email]);
+		await db.query('UPDATE usuarios SET reset_token = $1, reset_expires = $2 WHERE email = $3', [token, expiresAt, email]);
 	}
 	
 	async findByResetToken(token) {
-		const [rows] = await db.query('SELECT * FROM usuarios WHERE reset_token = ? AND reset_expires > NOW()', [token]);
+		const [rows] = await db.query('SELECT * FROM usuarios WHERE reset_token = $1 AND reset_expires > NOW()', [token]);
 		return rows[0];
 	}
 }
