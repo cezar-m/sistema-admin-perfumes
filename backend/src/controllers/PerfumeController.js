@@ -49,22 +49,22 @@ class PerfumeController {
 			// Admin: todos os perfumes + nome do criador
 			else if(usuarioCargo == 'admin') {
 				console.log('Admin: retornando TODOS os perfumes (com criador)');
-				const [rows] = await db.query(`
+				const result = await db.query(`
 					SELECT p.*, u.nome as criado_por
 					FROM perfumes p
 					LEFT JOIN usuarios u ON p.usuario_id = u.id
 					ORDER BY p.criado_em DESC
 				`);
-				perfumes = rows;
+				perfumes = result.rows;
 			}
 			// Funcionário: apenas os perfumes que ele mesmo cadastrou
 			else {
 				console.log(`Funcionário ${usuarioId}: retornando apenas perfumes com usuario_id = ${usuarioId}`);
-				const [rows] = await db.query(
+				const result = await db.query(
 					'SELECT * FROM perfumes WHERE usuario_id = $1 ORDER BY criado_em DESC',
 					[usuarioId]
 				);
-				perfumes = rows;
+				perfumes = result.rows;
 			}
 			
 			res.json(perfumes);
@@ -126,7 +126,7 @@ class PerfumeController {
 			}
 
 			try {
-				const [result] = await db.query(query, params);
+				const result = await db.query(query, params);
 				if(result.affectedRows === 0) {
 					return res.status(403).json({ error: 'Não autorizado ou perfume não existe' });
 				}
