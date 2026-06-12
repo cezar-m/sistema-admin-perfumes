@@ -53,8 +53,8 @@ class PedidoOnlineController {
 		// Verifica se o usuário é administrador (consulta no banco ou via token)
 		let isAdmin = false;
 		try {
-			const [rows] = await db.query('SELECT cargo FROM usuarios WHERE id = ?', [usuarioId]);
-			if(rows.length && rows[0].cargo === 'admin') {
+			const result = await db.query('SELECT cargo FROM usuarios WHERE id = $1', [usuarioId]);
+			if(rows.length && rows.result[0].cargo === 'admin') {
 				isAdmin = true;
 			}
 		} catch (error) {
