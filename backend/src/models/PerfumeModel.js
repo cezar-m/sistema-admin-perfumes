@@ -2,13 +2,13 @@ const db = require('../config/database');
 
 class PerfumeModel {
 	async findAll() {
-		const rows  = await db.query('SELECT * FROM perfumes ORDER BY criado_em DESC');
-		return rows;
+		const result  = await db.query('SELECT * FROM perfumes ORDER BY criado_em DESC');
+		return result.rows;
 	}
 	
 	async findByUserId(usuario_id) {
-		const rows = await db.query('SELECT * FROM perfumes WHERE usuario_id = $1 ORDER BY criado_em DESC', [usuario_id]);
-		return rows;
+		const result = await db.query('SELECT * FROM perfumes WHERE usuario_id = $1 ORDER BY criado_em DESC', [usuario_id]);
+		return result.rows;
 	}
 	
 	async findById(id) {
