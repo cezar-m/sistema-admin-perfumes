@@ -9,7 +9,7 @@ class VendaModel {
 		`;
 		const params = [];
 		if(filers.vendedor_id) {
-			query += ` WHERE s.vendedor_id = ?`;
+			query += ` WHERE s.vendedor_id = $1`;
 			params.push(filters,vendedor_id);
 		}
 		query += ` ORDER BY s.data_venda DESC`;
@@ -22,11 +22,11 @@ class VendaModel {
 			SELECT s.*, p.nome as perfume_nome
 			FROM vendas s
 			JOIN perfumes p ON s.perfume_id = p.id
-			WHERE s.id = ?
+			WHERE s.id = $1
 		`;
 		const params  = [id];
 		if(vendedor_id) {
-			query += ` AND s.vendedor_id = ?`;
+			query += ` AND s.vendedor_id = $1`;
 			params.push(vendedor_id);
 		}
 		const rows = await db.query(query, params);
@@ -37,7 +37,7 @@ class VendaModel {
 		const result = await db.query(
 			`INSERT INTO vendas
 			 (perfume_id, quantidade, total, cliente_nome, cliente_telefone, vendedor_id, forma_pagamento, data_venda, status_pagamento)
-			 VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), ?)`,
+			 VALUES ($1, $2, $3, $4, $5, $6, $7, NOW(), $8)`,
 			 [perfume_id, quantidade, total, cliente_nome, cliente_telefone, vendedor_id, forma_pagamento, status_pagamento || 'pendente']
 		);
 		return result.insertId;
@@ -54,11 +54,11 @@ class VendaModel {
 		`;
 		const params = [];
 		if(vendedor_id) {
-			query += ` WHERE vendedor_id = ?`;
+			query += ` WHERE vendedor_id = $1`;
 			params.push(vendedor_id);
 		}
-		const rows = await db.query(query, params);
-		return rows[0];
+		const result = await db.query(query, params);
+		return result.rows[0];
 	}
 }
 
