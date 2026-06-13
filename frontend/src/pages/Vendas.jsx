@@ -41,7 +41,10 @@ export default function Vendas() {
 			const response = await api.get('/perfumes');
 			setPerfumes(response.data.filter(p => p && p.quantidade > 0));
 		} catch (error) {
-			toast.error('Erro ao carregar perfumes');
+			catch(error) {
+    console.log('ERRO COMPLETO:', error.response?.data);
+    toast.error(error.response?.data?.error || 'Erro ao registrar venda');
+}
 		}
 	};
 	
