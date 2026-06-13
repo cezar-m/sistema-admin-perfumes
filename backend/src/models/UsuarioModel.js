@@ -46,24 +46,28 @@ class UsuarioModel {
 	
 	// Exclusão física com remoção de dependências (perfumes e vendas)
 	async deleteWithDependencies(id) {
-		const connection = await db.getConnection(); // se db não tiver getConnection, veja nota abaixo
-		try {
-			await connection.beginTransaction();
-			
-			// Deleta perfumes
-			await connection.query('DELETE FROM perfumes WHERE usuario_id = $1', [id]);
-			// Deleta vendas
-			await connection.query('DELETE FROM vendas WHERE vendedor_id = $1', [id]);
-			// Deleta usuário
-			const [result] = await connection.query('DELETE FROM usuarios WHERE id = $1', [id]);
-			await connection.commit();
-		} catch (error) {
-			await connection.rollback();
-			throw error;
-		} finally {
-			connection.release();
-		}
-	}
+    const connection = await db.getConnection();
+
+    try {
+        await connection.beginTransaction();
+
+        await connection.query(
+            'DELETE FROM perfumes WHERE usuario_id = $1',
+            [id]
+        );
+
+        await connection.query(
+            'DELETE FROM vendas WHERE vendedor_id = $1',
+            [id]
+        );
+
+        const [result] = await connection.query(
+            'DELETE FROM usuarios WHERE id = $1',
+            [id]
+        );
+
+        await connection.commit();
+    }
 	
 	async updateResetToken(email, token, expiresAt) {
 		await db.query('UPDATE usuarios SET reset_token = $1, reset_expires = $2 WHERE email = $3', [token, expiresAt, email]);
