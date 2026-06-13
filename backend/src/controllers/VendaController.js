@@ -28,7 +28,7 @@ class VendaController {
 			// Buscar perfume 
 			let perfumeRows;
 			try {
-				perfumeRows = await db.query('SELECT * FROM perfumes WHERE id = ?', [perfume_id]);
+				perfumeRows = await db.query('SELECT * FROM perfumes WHERE id = $1', [perfume_id]);
 			} catch (err) {
 				console.error('Erro na consulta do perfume:', err);
 				return res.status(500).json({ error: 'Erro ao buscar perfume' });
@@ -43,13 +43,13 @@ class VendaController {
 			const total = parseFloat(perfume.preco) * quantidade;
 			
 			// Atualiza o estoque
-			await db.query('UPDATE perfumes SET quantidade = quantidade - ? WHERE id = ?', [quantidade, perfume_id]);
+			await db.query('UPDATE perfumes SET quantidade = quantidade - $1 WHERE id = $2', [quantidade, perfume_id]);
 			
 			// Insere a venda com status_pagamento e quantidade_parcelas
 			const insertResult = await db.query(
 				`INSERT INTO vendas
 					(perfume_id, quantidade, total, cliente_nome, cliente_telefone, vendedor_id, forma_pagamento, data_venda, status_pagamento, quantidade_parcelas)
-					VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), ?, ?)`,
+					VALUES ($1, $2, $3, $4, $5, $6, $7, NOW(), $8, $9)`,
 					[perfume_id, quantidade, total, cliente_nome || null, cliente_telefone || null, vendedor_id, formaPagamento, 'pendente', quantidade_parcelas]
 			);
 			
@@ -67,7 +67,7 @@ class VendaController {
 					dataVencimento.setMonth(hoje.getMonth() + i);
 					await db.query(
 						`INSERT INTO parcelas (venda_id, numero_parcela, valor, data_vencimento, status)
-						VALUES (?, ?, ?, ?, 'pendente')`,
+						VALUES ($1, $2, $3, $4, 'pendente')`,
 						[newId, i, valorParcela, dataVencimento.toISOString().slice(0, 10)]
 					);
 				}
@@ -104,7 +104,7 @@ class VendaController {
 					FROM vendas s
 					JOIN perfumes p ON s.perfume_id = p.id
 					JOIN usuarios u ON s.vendedor_id = u.id
-					WHERE s.vendedor_id = ?
+					WHERE s.vendedor_id = $1
 					ORDER BY s.data_venda DESC
 				`, [usuarioId]);
 			}
@@ -128,7 +128,7 @@ class VendaController {
 			if(!opcoes.includes(status_pagamento)) {
 				return res.status(400).json({ error: 'Status inválido' });
 			}
-			await db.query('UPDATE vendas SET status_pagamento = ? WHERE id = ?', [status_pagamento, id]);
+			await db.query('UPDATE vendas SET status_pagamento = $1 WHERE id = $2', [status_pagamento, id]);
 			res.json({ message: 'Status atualizado com sucesso' });
 		} catch (error) {
 			console.error(error);
@@ -140,8 +140,8 @@ class VendaController {
 	async getParcelas(req, res) {
 		try {
 			const { id } = req.params;
-			const [rows] = await db.query('SELECT * FROM parcelas WHERE venda_id = ? ORDER BY numero_parcela', [id]);
-			res.json(rows);
+			const result = await db.query('SELECT * FROM parcelas WHERE venda_id = $1 ORDER BY numero_parcela', [id]);
+			res.json(result.rows);
 		} catch (error) {
 			console.error('Erro ao buscar parcelas:', error);
 			res.status(500).json({ error: error.message });
@@ -157,7 +157,7 @@ class VendaController {
 			if(!opcoes.includes(status)) {
 				return res.status(400).json({ error: 'Status inválido' });
 			}
-			await db.query('UPDATE parcelas SET status = ? WHERE id = ?', [status, id]);
+			await db.query('UPDATE parcelas SET status = $1 WHERE id = $2', [status, id]);
 			res.json({ message: 'Status da parcela atualizado' });
 		} catch (error) {
 			console.error('Erro ao atualizar parcela:', error);
