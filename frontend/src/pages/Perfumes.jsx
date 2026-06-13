@@ -191,7 +191,7 @@ export default function Perfumes() {
             <tbody>
               {perfumesExibidos.map(p => (
                 <tr key={p.id}>
-                  <td>{p.imagem ? <Image src={`http://localhost:5001/uploads/${p.imagem}`} width="50" rounded /> : '-'}</td>
+                  <td>{p.imagem ? <Image src={`https://sistema-admin-perfumes.onrender.com/uploads/${produto.imagem}`} width="50" rounded /> : '-'}</td>
                   <td>{p.nome}</td>
                   <td>R$ {formatPriceForDisplay(p.preco)}</td>
                   <td>{p.quantidade}</td>
