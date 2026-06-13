@@ -71,7 +71,7 @@ class UsuarioController {
 			await db.query('DELETE FROM perfumes WHERE usuario_id = $1', [usuarioId]);
 			
 			// 3. Deleta o usuário
-			const [result] = await db.query('DELETE FROM usuarios WHERE id = $1', [usuarioId]);
+			const result = await db.query('DELETE FROM usuarios WHERE id = $1 RETURNING id', [usuarioId]);
 			
 			if(result.affectedRows === 0) {
 				await db.query('ROLLBACK');
