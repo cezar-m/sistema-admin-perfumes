@@ -17,9 +17,14 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
 	(response) => response,
 	(error) => {
-		if (error.response?.status === 401) {
+
+		// Só desloga se já existir token
+		if (
+			error.response?.status === 401 &&
+			localStorage.getItem('token')
+		) {
 			localStorage.clear();
-			window.location.href = '/login';
+			window.location.href = '/';
 		}
 
 		return Promise.reject(error);
