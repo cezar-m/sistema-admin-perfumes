@@ -3,12 +3,12 @@ const bcrypt = require('bcrypt');
 
 class UsuarioModel {
 	async findAll() {
-		const result  = await db.query('SELECT id, nome, email, cargo, ativo criado_em FROM usuarios ORDER BY criado_em DESC');
+		const result  = await db.query('SELECT id, nome, email, cargo, ativo, criado_em FROM usuarios ORDER BY criado_em DESC');
 		return result.rows;
 	}
 	
 	async findById(id) {
-		const result  = await db.query('SELECT id, nome, email, cargo, ativo, FROM usuarios WHERE id = $1', [id]);
+		const result  = await db.query('SELECT id, nome, email, cargo, ativo FROM usuarios WHERE id = $1', [id]);
 		return result.rows[0];
 	}
 	
@@ -20,11 +20,11 @@ class UsuarioModel {
 	async create(usuarioData) {
 		const { nome, email, password, cargo } = usuarioData;
 		const hashedPassword = await bcrypt.hash(password, 10);
-		const [result] = await db.query(
-			'INSERT INTO usuarios (nome, email, password, cargo, ativo) VALUES ($1, $2, $3, $4, $5)',
+		const result = await db.query(
+			'INSERT INTO usuarios (nome, email, password, cargo, ativo) VALUES ($1, $2, $3, $4, $5) RETURNING id',
 			[nome, email, hashedPassword, cargo || 'funcionario', 1]
 		);
-		return result.insertId;
+		return result.rows[0].id;
 	}
 	
 	async update(id, usuarioData) {
@@ -32,12 +32,12 @@ class UsuarioModel {
 		if (password) {
 			const hashedPassword = await bcrypt.hash(password, 10);
 			await db.query(
-				'UPDATE usuarios SET nome = $1, email = $2, cargo = $3, ativo = $4, password = $1 WHERE id = $1',
+				'UPDATE usuarios SET nome = $1, email = $2, cargo = $3, ativo = $4, password = $5 WHERE id = $6',
 				[nome, email, cargo, ativo, hashedPassword, id]
 			);
 		} else {
 			await db.query(
-				'UPDATE usuarios SET nome = $1, email = $2, cargo = $3, ativo = $4 WHERE id = $1',
+				'UPDATE usuarios SET nome = $1, email = $2, cargo = $3, ativo = $4 WHERE id = $5',
 				[nome, email, cargo, ativo, id]
 			);
 		}
@@ -66,7 +66,7 @@ class UsuarioModel {
 	}
 	
 	async updateResetToken(email, token, expiresAt) {
-		await db.query('UPDATE usuarios SET reset_token = $1, reset_expires = $2 WHERE email = 3', [token, expiresAt, email]);
+		await db.query('UPDATE usuarios SET reset_token = $1, reset_expires = $2 WHERE email = $3', [token, expiresAt, email]);
 	}
 	
 	async findByResetToken(token) {
