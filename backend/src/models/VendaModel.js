@@ -8,13 +8,13 @@ class VendaModel {
 			JOIN perfumes p ON s.perfume_id = p.id
 		`;
 		const params = [];
-		if(filers.vendedor_id) {
-			query += ` WHERE s.vendedor_id = $1`;
-			params.push(filters,vendedor_id);
+		if(filters.vendedor_id) {
+			query += ` WHERE s.vendedor_id = $2`;
+			params.push(filters.vendedor_id);
 		}
 		query += ` ORDER BY s.data_venda DESC`;
 		const rows = await db.query(query, params);
-		return nows;
+		return rows;
 	}
 	
 	async findById(id, vendedor_id = null) {
@@ -30,6 +30,8 @@ class VendaModel {
 			params.push(vendedor_id);
 		}
 		const rows = await db.query(query, params);
+
+		return rows[0];
 	}
 	
 	async create(data) {
