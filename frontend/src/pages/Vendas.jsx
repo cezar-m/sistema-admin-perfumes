@@ -200,19 +200,28 @@ export default function Vendas() {
 											Preço: R$ {selectedPerfume.preco} | Estoque: {selectedPerfume.quantidade}
 										</Alert>
 										<Form.Group className="mb-3">
-											<Form.Label>Quantidade</Form.Label>
-											<Form.Control
-												type="number"
-												min="1"
-												max={selectedPerfume.quantidade}
-												value={quantidade}
-												onChange={e =>setQuantidade(parseInt(e.target.value))}
-												required
-											/>
+										    <Form.Label>Quantidade</Form.Label>
+										
+										    <Form.Control
+										        type="number"
+										        min="1"
+										        value={quantidade}
+										        onChange={(e) => {
+										            const valor = Number(e.target.value);
+										
+										            setQuantidade(valor);
+										        }}
+										        required
+										    />
+										
+										    {selectedPerfume &&
+										        quantidade > Number(selectedPerfume.quantidade) && (
+										            <Alert variant="danger" className="mt-2">
+										                Quantidade indisponível em estoque.
+										                Disponível: {selectedPerfume.quantidade}
+										            </Alert>
+										        )}
 										</Form.Group>
-										<Alert variant="success">
-											Total: R$ {(selectedPerfume.preco * quantidade).toFixed(2)}
-										</Alert>
 									</>
 								)}
 								
