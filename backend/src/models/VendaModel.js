@@ -9,12 +9,12 @@ class VendaModel {
 		`;
 		const params = [];
 		if(filters.vendedor_id) {
-			query += ` WHERE s.vendedor_id = $2`;
+			query += ` WHERE s.vendedor_id = $1`;
 			params.push(filters.vendedor_id);
 		}
 		query += ` ORDER BY s.data_venda DESC`;
-		const rows = await db.query(query, params);
-		return rows;
+		const result = await db.query(query, params);
+		return result.rows;
 	}
 	
 	async findById(id, vendedor_id = null) {
@@ -26,12 +26,12 @@ class VendaModel {
 		`;
 		const params  = [id];
 		if(vendedor_id) {
-			query += ` AND s.vendedor_id = $1`;
+			query += ` AND s.vendedor_id = $2`;
 			params.push(vendedor_id);
 		}
-		const rows = await db.query(query, params);
+		const result = await db.query(query, params);
 
-		return rows[0];
+		return result.rows[0];
 	}
 	
 	async create(data) {
@@ -39,10 +39,10 @@ class VendaModel {
 		const result = await db.query(
 			`INSERT INTO vendas
 			 (perfume_id, quantidade, total, cliente_nome, cliente_telefone, vendedor_id, forma_pagamento, data_venda, status_pagamento)
-			 VALUES ($1, $2, $3, $4, $5, $6, $7, NOW(), $8)`,
+			 VALUES ($1, $2, $3, $4, $5, $6, $7, NOW(), $8) RETURNING id`,
 			 [perfume_id, quantidade, total, cliente_nome, cliente_telefone, vendedor_id, forma_pagamento, status_pagamento || 'pendente']
 		);
-		return result.insertId;
+		return result.rows[0].id;
 	}
 	
 	async getDashboardStats(vendedor_id = null) {
