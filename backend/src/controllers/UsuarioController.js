@@ -60,7 +60,7 @@ class UsuarioController {
 		}
 		
 		try {
-			await db.query('START TRANSACTION');
+			await db.query('BEGIN');
 			
 			// 1. Primeiro, deleta as vendas associadas aos perfumes do usuário e também as vendas onde o usuário e vendedor
 			// (para desfazer qualquer dependência antes de deletar perfumes ou usuário)
@@ -73,7 +73,7 @@ class UsuarioController {
 			// 3. Deleta o usuário
 			const result = await db.query('DELETE FROM usuarios WHERE id = $1 RETURNING id', [usuarioId]);
 			
-			if(result.affectedRows === 0) {
+			if(result.rows.length === 0) {
 				await db.query('ROLLBACK');
 				return res.status(404).json({ error: 'Usuário não encontrado' });
 			}
