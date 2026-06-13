@@ -84,7 +84,7 @@ export default function Perfumes() {
         genero: perfume.genero || '',
         imagem: null
       });
-      setPreview(perfume.imagem ? `http://localhost:5001/uploads/${perfume.imagem}` : '');
+      setPreview(perfume.imagem ? `https://sistema-admin-perfumes.onrender.com/uploads/${produto.imagem}` : '');
     } else {
       resetForm();
     }
