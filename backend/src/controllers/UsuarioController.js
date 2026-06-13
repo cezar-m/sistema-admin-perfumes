@@ -13,24 +13,42 @@ class UsuarioController {
 	}
 	
 	async update(req, res) {
-		const { id } = req.params;
-		const { nome, email, cargo, ativo, password } = req.body;
-		try {
-			let query = 'UPDATE usuarios SET nome = $1, email = $2, cargo = $3, ativo = $4';
-			const params = [nome, email, cargo, ativo];
-			if(password && password.length >= 6) {
-				const hashed = await bcrypt.hash(password, 10);
-				query += ', password = $1';
-				params.push(hashed);
-			}
-			query += ' WHERE id = $1';
-			params.push(id);
-			await db.query(query, params);
-			res.json({ message: 'Atualizado' });
-		} catch (error) {
-			console.error(error);
-			res.status(500).json({ error: 'Erro ao atualizar'});
-		}
+    	const { id } = req.params;
+    	const { nome, email, cargo, ativo, password } = req.body;
+			try {
+				let result;
+				if (password && password.trim().length >= 6) {
+					const hashed = await bcrypt.hash(password, 10);
+					result = await db.query(`UPDATE usuarios SET nome = $1, email = $2, cargo = $3, ativo = $4, password = $5 WHERE id = $6 RETURNING id`,
+                	[nome, email, cargo, ativo, hashed, id]
+            	);
+        		} else {
+				result = await db.query(
+                `UPDATE usuarios SET nome = $1, email = $2,cargo = $3, ativo = $4 WHERE id = $5 RETURNING id`,
+                [nome, email, cargo, ativo, id]
+            	);
+        	}
+
+	        if (result.rows.length === 0) {
+	            return res.status(404).json({
+	                error: 'Usuário não encontrado'
+	            });
+	        }
+	
+	        return res.json({
+	            message: 'Usuário atualizado com sucesso'
+	        });
+
+    	} catch (error) {
+
+        	console.error('Erro ao atualizar usuário:', error);
+
+        	return res.status(500).json({
+            	error: error.message,
+            	detail: error.detail,
+            	code: error.code
+        });
+    }
 	}
 	
 	async delete(req, res) {
