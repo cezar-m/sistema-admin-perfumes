@@ -14,11 +14,11 @@ app.use(cors({
   origin: [
     'http://localhost:5173',
     'http://localhost:3000',
-    'https://site-perfumes-com-admin-sistemas.vercel.app'
+    'https://site-perfumes-com-admin-sistemas.vercel.app',
+    'https://sistema-admin-perfumes.vercel.app'
   ],
   credentials: true
 }));
-
 app.use(express.json());
 
 // Servir arquivos estáticos (com fallback para produção)
