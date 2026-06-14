@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Pagination, Button } from 'react-bootstrap';
+import { Pagination, Button } from 'react-bootstrap'
 import api from '../services/api';
 
 export default function PedidosOnline() {
@@ -57,7 +57,7 @@ export default function PedidosOnline() {
   const aprovarPedido = async (pedidoId) => {
     if (!window.confirm('Aprovar este pedido? O estoque será reduzido permanentemente.')) return;
     try {
-      await api.put(`/api/pedidos/${pedidoId}/aprovar`);
+      await api.put(`/pedidos/${pedidoId}/aprovar`);
       alert('Pedido aprovado com sucesso!');
       carregarPedidos(true);
     } catch (error) {
