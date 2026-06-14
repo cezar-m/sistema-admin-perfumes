@@ -43,15 +43,18 @@ class PedidoOnlineModel {
             `;
             params = [];
         } else {
-            // FUNCIONÁRIO: vê TODOS os pendentes + TODOS os aprovados (sem filtro de aprovador)
+            // FUNCIONÁRIO:
+            // - Vê TODOS os pedidos com status 'aguardando_aprovacao' (pendentes)
+            // - Vê SOMENTE os pedidos aprovados por ele mesmo (aprovado_por_id = seu ID)
             sql = `
                 SELECT po.*, u.nome AS cliente_nome, u.email, NULL AS aprovador_nome
                 FROM pedidos_online po
                 INNER JOIN usuarios u ON u.id = po.cliente_id
-                WHERE po.status IN ('aguardando_aprovacao', 'aprovado')
+                WHERE po.status = 'aguardando_aprovacao'
+                   OR (po.status = 'aprovado' AND po.aprovado_por_id = $1)
                 ORDER BY po.data_pedido DESC
             `;
-            params = [];
+            params = [usuarioId];
         }
         const result = await db.query(sql, params);
         const pedidos = result.rows;
