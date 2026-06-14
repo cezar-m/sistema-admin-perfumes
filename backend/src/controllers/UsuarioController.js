@@ -28,100 +28,63 @@ class UsuarioController {
                 [nome, email, cargo, ativo, id]
             	);
         	}
-
 	        if (result.rows.length === 0) {
 	            return res.status(404).json({
 	                error: 'Usuário não encontrado'
 	            });
 	        }
-	
 	        return res.json({
 	            message: 'Usuário atualizado com sucesso'
 	        });
 
     	} catch (error) {
-
         	console.error('Erro ao atualizar usuário:', error);
-
         	return res.status(500).json({
             	error: error.message,
             	detail: error.detail,
             	code: error.code
-        });
-    }
+        	});
+    	}
 	}
 	
 	async delete(req, res) {
-
-    const usuarioId = req.params.id;
-    const loggedUsuarioId = req.usuarioId;
-
-    if (Number(usuarioId) === Number(loggedUsuarioId)) {
-        return res.status(403).json({
-            error: 'Você não pode excluir sua própria conta'
-        });
-    }
-
-    try {
-
-        await db.query('BEGIN');
-
-        // remove parcelas
-        await db.query(`
-            DELETE FROM parcelas
-            WHERE venda_id IN (
-                SELECT id
-                FROM vendas
-                WHERE vendedor_id = $1
-            )
-        `, [usuarioId]);
-
-        // remove vendas
-        await db.query(
-            'DELETE FROM vendas WHERE vendedor_id = $1',
-            [usuarioId]
-        );
-
-        // remove perfumes
-        await db.query(
-            'DELETE FROM perfumes WHERE usuario_id = $1',
-            [usuarioId]
-        );
-
-        // remove usuário
-        const result = await db.query(
-            'DELETE FROM usuarios WHERE id = $1 RETURNING id',
-            [usuarioId]
-        );
-
-        if (result.rows.length === 0) {
-
-            await db.query('ROLLBACK');
-
-            return res.status(404).json({
-                error: 'Usuário não encontrado'
-            });
-        }
-
-        await db.query('COMMIT');
-
-        return res.json({
-            message: 'Usuário excluído com sucesso'
-        });
-
-    } catch (error) {
-
-        await db.query('ROLLBACK');
-
-        console.error('ERRO DELETE:', error);
-
-        return res.status(500).json({
-            error: error.message,
-            detail: error.detail,
-            code: error.code
-        });
-    }
-}
+    	const usuarioId = req.params.id;
+    	const loggedUsuarioId = req.usuarioId;
+    	if (Number(usuarioId) === Number(loggedUsuarioId)) {
+        	return res.status(403).json({
+            	error: 'Você não pode excluir sua própria conta'
+        	});
+    	}
+    	try {
+        	await db.query('BEGIN');
+        	// remove parcelas
+        	await db.query(`DELETE FROM parcelas WHERE venda_id IN (SELECT id FROM vendas WHERE vendedor_id = $1)`, [usuarioId]);
+       	 	// remove vendas
+       		 await db.query('DELETE FROM vendas WHERE vendedor_id = $1', [usuarioId]);
+			// remove perfumes
+        	await db.query('DELETE FROM perfumes WHERE usuario_id = $1', [usuarioId]);
+        	// remove usuário
+        	const result = await db.query('DELETE FROM usuarios WHERE id = $1 RETURNING id', [usuarioId]);
+        	if (result.rows.length === 0) {
+            	await db.query('ROLLBACK');
+            	return res.status(404).json({
+                	error: 'Usuário não encontrado'
+            	});
+        	}
+			await db.query('COMMIT');
+        	return res.json({
+            	message: 'Usuário excluído com sucesso'
+        	});
+    	} catch (error) {
+        	await db.query('ROLLBACK');
+        	console.error('ERRO DELETE:', error);
+        	return res.status(500).json({
+            	error: error.message,
+            	detail: error.detail,
+            	code: error.code
+        	});
+    	}	
+	}	
 }
 
 module.exports = new UsuarioController();
