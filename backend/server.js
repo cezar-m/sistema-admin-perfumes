@@ -11,7 +11,11 @@ const allowedOrigins = process.env.NODE_ENV === 'production'
   : ['http://localhost:5173', 'http://localhost:3000'];
 
 app.use(cors({
-  origin: allowedOrigins,
+  origin: [
+    'http://localhost:5173',
+    'http://localhost:3000',
+    'https://site-perfumes-com-admin-sistemas-cs.vercel.app'
+  ],
   credentials: true
 }));
 
