@@ -15,7 +15,7 @@ export default function PedidosOnline() {
       setLoading(true);
       // Adiciona timestamp para quebrar cache do navegador
       const timestamp = Date.now();
-      const url = force ? `/pedidos?_=${timestamp}` : `/pedidos`;
+      const url = force ? `/api/pedidos?_=${timestamp}` : `/api/pedidos`;
       const { data } = await api.get(url);
       setPedidos(data);
       setError('');
@@ -57,7 +57,7 @@ export default function PedidosOnline() {
   const aprovarPedido = async (pedidoId) => {
     if (!window.confirm('Aprovar este pedido? O estoque será reduzido permanentemente.')) return;
     try {
-      await api.put(`/pedidos/${pedidoId}/aprovar`);
+      await api.put(`/api/pedidos/${pedidoId}/aprovar`);
       alert('Pedido aprovado com sucesso!');
       carregarPedidos(true);
     } catch (error) {
