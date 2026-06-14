@@ -63,7 +63,8 @@ class VendaController {
            console.log('PREÇO:', preco);
            console.log('TOTAL:', total);
    
-           await db.query(`UPDATE perfumes SET quantidade = quantidade - $1 WHERE id = $2, [Number(quantidade), perfume_id]);
+           await db.query(`UPDATE perfumes SET quantidade = quantidade - $1 WHERE id = $2`, 
+            [Number(quantidade), perfume_id]);
    
            const vendaResult = await db.query(`INSERT INTO vendas (perfume_id, quantidade, total, cliente_nome, cliente_telefone, forma_pagamento, vendedor_id, data_venda, status_pagamento, quantidade_parcelas)
                VALUES ($1,$2,$3,$4,$5,$6,$7,NOW(),$8,$9)RETURNING *`,
