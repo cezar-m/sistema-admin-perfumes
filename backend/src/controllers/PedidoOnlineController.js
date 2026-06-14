@@ -22,12 +22,14 @@ async listarMeusPedidos(req, res) {
         res.status(500).json({ error: error.message });
     }
 }
-
 async listarTodosPedidos(req, res) {
+    if (!req.usuarioId) {
+        return res.status(401).json({ erro: 'Não autenticado' });
+    }
     const isAdmin = req.usuarioCargo === 'admin';
     try {
         const pedidos = await PedidoOnlineModel.listarComPermissao(req.usuarioId, isAdmin);
-        res.set('Cache-Control', 'no-store, no-cache, must-revalidate, private');
+        res.set('Cache-Control', 'no-store, no-cache');
         res.json(pedidos);
     } catch (error) {
         res.status(500).json({ error: error.message });
