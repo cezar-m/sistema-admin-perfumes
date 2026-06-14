@@ -78,7 +78,6 @@ class PerfumeController {
 
 	// Os demais métodos (store, upate, delete) permanecem iguais
 	async store(req, res) {
-		
 		// Permissão: apenas admin ou funcionário
 	   if(req.usuarioCargo !== "admin" && req.usuarioCargo !== "funcionario") {
 			return res.status(403).json({ error: 'Apenas funcionários ou administradores podem cadastrar perfumes' });
@@ -104,98 +103,56 @@ class PerfumeController {
 	}
 
 	async update(req, res) {
-    upload(req, res, async (err) => {
-
-        if (err) {
-            return res.status(400).json({
-                error: 'Erro no upload'
-            });
-        }
-
-        try {
-
-            const { id } = req.params;
-
-            const {
-                nome,
-                descricao,
-                preco,
-                quantidade,
-                familia,
-                genero
-            } = req.body;
-
-            let query = `
-                UPDATE perfumes
-                SET
-                    nome=$1,
-                    descricao=$2,
-                    preco=$3,
-                    quantidade=$4,
-                    familia=$5,
-                    genero=$6
-            `;
-
-            const params = [
-                nome,
-                descricao,
-                preco,
-                quantidade,
-                familia,
-                genero
-            ];
-
-            if (req.file) {
-                query += `, imagem=$7`;
-                params.push(req.file.filename);
-            }
-
-            if (req.usuarioCargo === 'admin') {
-
-                const idParam = params.length + 1;
-
-                query += ` WHERE id=$${idParam}`;
-                params.push(id);
-
-            } else {
-
-                const idParam = params.length + 1;
-                params.push(id);
-
-                const usuarioParam = params.length + 1;
-                params.push(req.usuarioId);
-
-                query += `
-                    WHERE id=$${idParam}
-                    AND usuario_id=$${usuarioParam}
-                `;
-            }
-
-            const result = await db.query(
-                query,
-                params
-            );
-
-            if (result.rowCount === 0) {
-                return res.status(404).json({
-                    error: 'Perfume não encontrado'
-                });
-            }
-
-            return res.json({
-                message: 'Perfume atualizado'
-            });
-
-        } catch (error) {
-
-            console.error('ERRO UPDATE:', error);
-
-            return res.status(500).json({
-                error: error.message
-            });
-        }
-    });
-}
+    	upload(req, res, async (err) => {
+	        if (err) {
+	            return res.status(400).json({
+	                error: 'Erro no upload'
+	            });
+	        }
+	        try {
+	            const { id } = req.params;
+	            const {
+	                nome, descricao, preco, quantidade, familia, genero
+	            } = req.body;
+				let query = `UPDATE perfumes SET nome=$1, descricao=$2, preco=$3, quantidade=$4, familia=$5, genero=$6`;
+	            const params = [nome, descricao, preco, quantidade, familia, genero];
+	            if (req.file) {
+	                query += `, imagem=$7`;
+	                params.push(req.file.filename);
+	            }
+	            if (req.usuarioCargo === 'admin') {
+	                const idParam = params.length + 1;
+	                query += ` WHERE id=$${idParam}`;
+	                params.push(id);
+	            } else {
+	                const idParam = params.length + 1;
+	                params.push(id);
+	                const usuarioParam = params.length + 1;
+	                params.push(req.usuarioId);
+	                query += `
+	                    WHERE id=$${idParam}
+	                    AND usuario_id=$${usuarioParam}
+	                `;
+	            }
+	            const result = await db.query(
+	                query, params
+	            );
+	            if (result.rowCount === 0) {
+	                return res.status(404).json({
+	                    error: 'Perfume não encontrado'
+	                });
+	            }
+	            return res.json({
+	                message: 'Perfume atualizado'
+	            });
+	        } catch (error) {
+	            console.error('ERRO UPDATE:', error);
+	            return res.status(500).json({
+	                error: error.message
+	            });
+	        }
+    	});
+	}
 
 	async delete(req, res) {
 		const { id } = req.params;
