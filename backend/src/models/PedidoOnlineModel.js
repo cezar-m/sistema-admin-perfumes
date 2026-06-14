@@ -4,7 +4,6 @@ class PedidoOnlineModel {
 
     // Cliente vê seus próprios pedidos
     static async listarPorCliente(clienteId) {
-
         const result = await db.query(
             `
             SELECT *
@@ -16,10 +15,7 @@ class PedidoOnlineModel {
         );
 
         const pedidos = result.rows;
-
-        if (pedidos.length === 0) {
-            return pedidos;
-        }
+        if (pedidos.length === 0) return pedidos;
 
         const ids = pedidos.map(p => p.id);
 
@@ -29,25 +25,19 @@ class PedidoOnlineModel {
                 ip.pedido_id,
                 ip.quantidade,
                 ip.preco_unitario,
-                perf.nome
+                perf.nome AS nome
             FROM itens_pedido_online ip
-            INNER JOIN perfumes perf
-                ON perf.id = ip.perfume_id
+            INNER JOIN perfumes perf ON perf.id = ip.perfume_id
             WHERE ip.pedido_id = ANY($1)
             `,
             [ids]
         );
 
         const itens = itensResult.rows;
-
         const itensPorPedido = {};
 
         for (const item of itens) {
-
-            if (!itensPorPedido[item.pedido_id]) {
-                itensPorPedido[item.pedido_id] = [];
-            }
-
+            if (!itensPorPedido[item.pedido_id]) itensPorPedido[item.pedido_id] = [];
             itensPorPedido[item.pedido_id].push({
                 nome: item.nome,
                 quantidade: item.quantidade,
@@ -62,14 +52,12 @@ class PedidoOnlineModel {
         return pedidos;
     }
 
-    // Funcionários/Admin
+    // Funcionários/Admin – com correção de visibilidade para funcionários (vêem todos os pedidos aprovados)
     static async listarComPermissao(usuarioId, isAdmin = false) {
-
         let sql;
         let params;
 
         if (isAdmin) {
-
             sql = `
                 SELECT
                     po.*,
@@ -77,17 +65,14 @@ class PedidoOnlineModel {
                     u.email,
                     aprov.nome AS aprovador_nome
                 FROM pedidos_online po
-                INNER JOIN usuarios u
-                    ON u.id = po.cliente_id
-                LEFT JOIN usuarios aprov
-                    ON aprov.id = po.aprovado_por_id
+                INNER JOIN usuarios u ON u.id = po.cliente_id
+                LEFT JOIN usuarios aprov ON aprov.id = po.aprovado_por_id
                 ORDER BY po.data_pedido DESC
             `;
-
             params = [];
-
         } else {
-
+            // Funcionário: vê todos os pedidos pendentes E todos os pedidos aprovados (independente de quem aprovou)
+            // Se quiser restringir para apenas os que ele próprio aprovou, descomente a linha abaixo e comente a atual.
             sql = `
                 SELECT
                     po.*,
@@ -95,26 +80,21 @@ class PedidoOnlineModel {
                     u.email,
                     NULL AS aprovador_nome
                 FROM pedidos_online po
-                INNER JOIN usuarios u
-                    ON u.id = po.cliente_id
-                WHERE
-                    po.status = 'aguardando_aprovacao'
-                    OR (
-                        po.status <> 'aguardando_aprovacao'
-                        AND po.aprovado_por_id = $1
-                    )
+                INNER JOIN usuarios u ON u.id = po.cliente_id
+                WHERE po.status = 'aguardando_aprovacao' OR po.status = 'aprovado'
                 ORDER BY po.data_pedido DESC
             `;
-
-            params = [usuarioId];
+            params = [];
+            // Caso queira o comportamento original (só vê os aprovados por ele mesmo):
+            // sql = `... WHERE po.status = 'aguardando_aprovacao' OR (po.status <> 'aguardando_aprovacao' AND po.aprovado_por_id = $1)`;
+            // params = [usuarioId];
         }
 
         const result = await db.query(sql, params);
-
         const pedidos = result.rows;
 
+        // Busca itens de cada pedido (N+1, mas simples; se muitos pedidos, pode ser otimizado com um segundo IN)
         for (const pedido of pedidos) {
-
             const itensResult = await db.query(
                 `
                 SELECT
@@ -122,22 +102,19 @@ class PedidoOnlineModel {
                     ip.preco_unitario,
                     perf.nome AS perfume_nome
                 FROM itens_pedido_online ip
-                INNER JOIN perfumes perf
-                    ON perf.id = ip.perfume_id
+                INNER JOIN perfumes perf ON perf.id = ip.perfume_id
                 WHERE ip.pedido_id = $1
                 `,
                 [pedido.id]
             );
-
             pedido.itens = itensResult.rows;
         }
 
         return pedidos;
     }
 
-    // Criar pedido
+    // Criar pedido – corrigido para tratar dados_transacao e endereco_entrega nulos
     static async criar(pedido) {
-
         const {
             cliente_id,
             total,
@@ -150,16 +127,16 @@ class PedidoOnlineModel {
         const client = await db.connect();
 
         try {
-
             await client.query('BEGIN');
 
-            const enderecoFinal = endereco_entrega
-                ? (
-                    typeof endereco_entrega === 'string'
-                        ? endereco_entrega
-                        : JSON.stringify(endereco_entrega)
-                )
-                : null;
+            // Converte para JSON ou NULL corretamente
+            const transacaoJson = dados_transacao ? JSON.stringify(dados_transacao) : null;
+            let enderecoFinal = null;
+            if (endereco_entrega) {
+                enderecoFinal = typeof endereco_entrega === 'string'
+                    ? endereco_entrega
+                    : JSON.stringify(endereco_entrega);
+            }
 
             const pedidoResult = await client.query(
                 `
@@ -171,29 +148,15 @@ class PedidoOnlineModel {
                     dados_transacao,
                     status
                 )
-                VALUES (
-                    $1,
-                    $2,
-                    $3,
-                    $4,
-                    $5,
-                    'aguardando_aprovacao'
-                )
+                VALUES ($1, $2, $3, $4, $5, 'aguardando_aprovacao')
                 RETURNING id
                 `,
-                [
-                    cliente_id,
-                    total,
-                    forma_pagamento,
-                    enderecoFinal,
-                    JSON.stringify(dados_transacao)
-                ]
+                [cliente_id, total, forma_pagamento, enderecoFinal, transacaoJson]
             );
 
             const pedidoId = pedidoResult.rows[0].id;
 
             for (const item of itens) {
-
                 await client.query(
                     `
                     INSERT INTO itens_pedido_online (
@@ -202,47 +165,32 @@ class PedidoOnlineModel {
                         quantidade,
                         preco_unitario
                     )
-                    VALUES ($1,$2,$3,$4)
+                    VALUES ($1, $2, $3, $4)
                     `,
-                    [
-                        pedidoId,
-                        item.perfume_id,
-                        item.quantidade,
-                        item.preco_unitario
-                    ]
+                    [pedidoId, item.perfume_id, item.quantidade, item.preco_unitario]
                 );
             }
 
             await client.query('COMMIT');
-
             return pedidoId;
 
         } catch (error) {
-
             await client.query('ROLLBACK');
             throw error;
-
         } finally {
-
             client.release();
         }
     }
 
-    // Aprovar pedido
+    // Aprovar pedido – reduz estoque e marca aprovado
     static async aprovar(pedidoId, aprovadoPorId) {
-
         const client = await db.connect();
 
         try {
-
             await client.query('BEGIN');
 
             const pedidoResult = await client.query(
-                `
-                SELECT status
-                FROM pedidos_online
-                WHERE id = $1
-                `,
+                `SELECT status FROM pedidos_online WHERE id = $1`,
                 [pedidoId]
             );
 
@@ -251,72 +199,44 @@ class PedidoOnlineModel {
             }
 
             const pedido = pedidoResult.rows[0];
-
             if (pedido.status !== 'aguardando_aprovacao') {
                 throw new Error('Pedido já processado');
             }
 
             const itensResult = await client.query(
-                `
-                SELECT
-                    perfume_id,
-                    quantidade
-                FROM itens_pedido_online
-                WHERE pedido_id = $1
-                `,
+                `SELECT perfume_id, quantidade FROM itens_pedido_online WHERE pedido_id = $1`,
                 [pedidoId]
             );
 
             const itens = itensResult.rows;
 
             for (const item of itens) {
-
                 const updateResult = await client.query(
-                    `
-                    UPDATE perfumes
-                    SET quantidade = quantidade - $1
-                    WHERE id = $2
-                    AND quantidade >= $3
-                    `,
-                    [
-                        item.quantidade,
-                        item.perfume_id,
-                        item.quantidade
-                    ]
+                    `UPDATE perfumes
+                     SET quantidade = quantidade - $1
+                     WHERE id = $2 AND quantidade >= $3`,
+                    [item.quantidade, item.perfume_id, item.quantidade]
                 );
 
                 if (updateResult.rowCount === 0) {
-                    throw new Error(
-                        `Estoque insuficiente para o perfume ID ${item.perfume_id}`
-                    );
+                    throw new Error(`Estoque insuficiente para o perfume ID ${item.perfume_id}`);
                 }
             }
 
             await client.query(
-                `
-                UPDATE pedidos_online
-                SET
-                    status = 'aprovado',
-                    aprovado_por_id = $1
-                WHERE id = $2
-                `,
-                [
-                    aprovadoPorId,
-                    pedidoId
-                ]
+                `UPDATE pedidos_online
+                 SET status = 'aprovado', aprovado_por_id = $1
+                 WHERE id = $2`,
+                [aprovadoPorId, pedidoId]
             );
 
             await client.query('COMMIT');
-
             return true;
 
         } catch (error) {
-
             await client.query('ROLLBACK');
             throw error;
-
         } finally {
-
             client.release();
         }
     }
