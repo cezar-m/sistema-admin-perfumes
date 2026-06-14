@@ -1,6 +1,7 @@
 const db = require('../config/database');
 
 class PedidoOnlineModel {
+    // Cliente vê seus próprios pedidos
     static async listarPorCliente(clienteId) {
         const result = await db.query(
             `SELECT * FROM pedidos_online WHERE cliente_id = $1 ORDER BY data_pedido DESC`,
@@ -30,7 +31,8 @@ class PedidoOnlineModel {
         }
         return pedidos;
     }
-    
+
+    // Listagem com permissão (admin vê tudo; funcionário vê pendentes + seus próprios aprovados)
     static async listarComPermissao(usuarioId, isAdmin = false) {
         let sql, params;
         if (isAdmin) {
@@ -43,9 +45,7 @@ class PedidoOnlineModel {
             `;
             params = [];
         } else {
-            // FUNCIONÁRIO:
-            // - Vê TODOS os pedidos com status 'aguardando_aprovacao' (pendentes)
-            // - Vê SOMENTE os pedidos aprovados por ele mesmo (aprovado_por_id = seu ID)
+            // Funcionário: todos os pendentes + apenas os aprovados por ele mesmo
             sql = `
                 SELECT po.*, u.nome AS cliente_nome, u.email, NULL AS aprovador_nome
                 FROM pedidos_online po
@@ -70,7 +70,8 @@ class PedidoOnlineModel {
         }
         return pedidos;
     }
-    
+
+    // Criar pedido (sempre com status 'aguardando_aprovacao')
     static async criar(pedido) {
         const { cliente_id, total, forma_pagamento, dados_transacao, endereco_entrega, itens } = pedido;
         const client = await db.connect();
@@ -104,7 +105,8 @@ class PedidoOnlineModel {
             client.release();
         }
     }
-    
+
+    // Aprovar pedido (só se status = 'aguardando_aprovacao')
     static async aprovar(pedidoId, aprovadoPorId) {
         const client = await db.connect();
         try {
