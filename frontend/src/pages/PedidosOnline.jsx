@@ -15,7 +15,7 @@ export default function PedidosOnline() {
       setLoading(true);
       // Adiciona timestamp para quebrar cache do navegador
       const timestamp = Date.now();
-      const url = force ? `/api/pedidos?_=${timestamp}` : `/api/pedidos`;
+      const url = force ? `/pedidos?_=${timestamp}` : `/pedidos`;
       const { data } = await api.get(url);
       setPedidos(data);
       setError('');
