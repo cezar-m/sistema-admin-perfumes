@@ -14,7 +14,7 @@ app.use(cors({
   origin: [
     'http://localhost:5173',
     'http://localhost:3000',
-    'https://site-perfumes-com-admin-sistemas-cs.vercel.app'
+    'https://site-perfumes-com-admin-sistemas.vercel.app'
   ],
   credentials: true
 }));
