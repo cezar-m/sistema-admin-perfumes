@@ -188,79 +188,78 @@ class VendaController {
     }
 }
 
-    async index(req, res) {
-        try {
+   async index(req, res) {
+    try {
 
-            const usuarioId = req.usuarioId;
-            const usuarioCargo = req.usuarioCargo;
+        console.log('===== INDEX VENDAS =====');
+        console.log('usuarioId:', req.usuarioId);
+        console.log('usuarioCargo:', req.usuarioCargo);
 
-            let result;
+        let result;
 
-            if (usuarioCargo === 'admin') {
+        if (req.usuarioCargo === 'admin') {
 
-                result = await db.query(`
-                    SELECT
-                        s.id,
-                        s.quantidade,
-                        s.total,
-                        s.cliente_nome,
-                        s.cliente_telefone,
-                        s.forma_pagamento,
-                        s.status_pagamento,
-                        s.quantidade_parcelas,
-                        s.data_venda,
-                        p.nome AS perfume_nome,
-                        u.nome AS vendedor_nome
-                    FROM vendas s
-                    INNER JOIN perfumes p
-                        ON p.id = s.perfume_id
-                    INNER JOIN usuarios u
-                        ON u.id = s.vendedor_id
-                    ORDER BY s.data_venda DESC
-                `);
+            result = await db.query(`
+                SELECT
+                    s.id,
+                    s.quantidade,
+                    s.total,
+                    s.cliente_nome,
+                    s.cliente_telefone,
+                    s.forma_pagamento,
+                    s.status_pagamento,
+                    s.quantidade_parcelas,
+                    s.data_venda,
+                    p.nome AS perfume_nome,
+                    u.nome AS vendedor_nome
+                FROM vendas s
+                INNER JOIN perfumes p
+                    ON p.id = s.perfume_id
+                INNER JOIN usuarios u
+                    ON u.id = s.vendedor_id
+                ORDER BY s.data_venda DESC
+            `);
 
-            } else {
+        } else {
 
-                result = await db.query(
-                    `
-                    SELECT
-                        s.id,
-                        s.quantidade,
-                        s.total,
-                        s.cliente_nome,
-                        s.cliente_telefone,
-                        s.forma_pagamento,
-                        s.status_pagamento,
-                        s.quantidade_parcelas,
-                        s.data_venda,
-                        p.nome AS perfume_nome,
-                        u.nome AS vendedor_nome
-                    FROM vendas s
-                    INNER JOIN perfumes p
-                        ON p.id = s.perfume_id
-                    INNER JOIN usuarios u
-                        ON u.id = s.vendedor_id
-                    WHERE s.vendedor_id = $1
-                    ORDER BY s.data_venda DESC
-                    `,
-                    [usuarioId]
-                );
-            }
+            result = await db.query(`
+                SELECT
+                    s.id,
+                    s.quantidade,
+                    s.total,
+                    s.cliente_nome,
+                    s.cliente_telefone,
+                    s.forma_pagamento,
+                    s.status_pagamento,
+                    s.quantidade_parcelas,
+                    s.data_venda,
+                    p.nome AS perfume_nome,
+                    u.nome AS vendedor_nome
+                FROM vendas s
+                INNER JOIN perfumes p
+                    ON p.id = s.perfume_id
+                INNER JOIN usuarios u
+                    ON u.id = s.vendedor_id
+                WHERE s.vendedor_id = $1
+                ORDER BY s.data_venda DESC
+            `, [req.usuarioId]);
 
-            return res.json(result.rows);
-
-        } catch (error) {
-
-            console.error(
-                'Erro ao listar vendas:',
-                error
-            );
-
-            return res.status(500).json({
-                error: error.message
-            });
         }
+
+        return res.json(result.rows);
+
+    } catch (error) {
+
+        console.error('===== ERRO INDEX VENDAS =====');
+        console.error(error);
+        console.error(error.message);
+
+        return res.status(500).json({
+            error: error.message,
+            stack: error.stack
+        });
     }
+}
 
     async updateStatus(req, res) {
         try {
