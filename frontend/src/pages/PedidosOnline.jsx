@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Pagination } from 'react-bootstrap';
+import React, { useState, useEffect, useRef } from 'react';
+import { Pagination, Button } from 'react-bootstrap';
 import api from '../services/api';
 
 export default function PedidosOnline() {
@@ -8,13 +8,18 @@ export default function PedidosOnline() {
   const [error, setError] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
+  const intervalRef = useRef(null);
 
-  const carregarPedidos = async () => {
+  const carregarPedidos = async (force = false) => {
     try {
       setLoading(true);
-      const { data } = await api.get('/pedidos');
+      // Adiciona timestamp para quebrar cache do navegador
+      const timestamp = Date.now();
+      const url = force ? `/pedidos?_=${timestamp}` : `/pedidos`;
+      const { data } = await api.get(url);
       setPedidos(data);
       setError('');
+      console.log('Pedidos carregados:', data.length);
     } catch (error) {
       console.error(error);
       setError('Erro ao carregar pedidos');
@@ -23,15 +28,29 @@ export default function PedidosOnline() {
     }
   };
 
-  // Carrega ao montar + ao focar na aba + polling a cada 30s
+  // Recarga manual (botão)
+  const refresh = () => carregarPedidos(true);
+
   useEffect(() => {
-    carregarPedidos();
-    const handleFocus = () => carregarPedidos();
+    // Carrega ao montar
+    carregarPedidos(true);
+
+    // Polling a cada 15 segundos (mais rápido)
+    intervalRef.current = setInterval(() => {
+      console.log('Polling pedidos...');
+      carregarPedidos(true); // sempre com cache-bust
+    }, 15000);
+
+    // Recarrega quando a aba ganha foco
+    const handleFocus = () => {
+      console.log('Aba focada, recarregando...');
+      carregarPedidos(true);
+    };
     window.addEventListener('focus', handleFocus);
-    const interval = setInterval(carregarPedidos, 30000);
+
     return () => {
+      clearInterval(intervalRef.current);
       window.removeEventListener('focus', handleFocus);
-      clearInterval(interval);
     };
   }, []);
 
@@ -40,20 +59,14 @@ export default function PedidosOnline() {
     try {
       await api.put(`/pedidos/${pedidoId}/aprovar`);
       alert('Pedido aprovado com sucesso!');
-      carregarPedidos();
+      carregarPedidos(true);
     } catch (error) {
       alert(error.response?.data?.erro || 'Erro ao aprovar pedido');
     }
   };
 
-  if (loading) return <div className="text-center mt-5">Carregando...</div>;
+  if (loading && pedidos.length === 0) return <div className="text-center mt-5">Carregando...</div>;
   if (error) return <div className="alert alert-danger">{error}</div>;
-  if (pedidos.length === 0) return (
-    <div className="container mt-4">
-      <h2 className="mb-4">Pedidos Online</h2>
-      <div className="alert alert-info">Nenhum pedido encontrado</div>
-    </div>
-  );
 
   const pendentes = pedidos.filter(p => p.status === 'aguardando_aprovacao');
   const processados = pedidos.filter(p => p.status !== 'aguardando_aprovacao');
@@ -64,8 +77,15 @@ export default function PedidosOnline() {
 
   return (
     <div className="container mt-4">
-      <h2 className="mb-4">Pedidos Online - Aguardando Aprovação</h2>
+      <div className="d-flex justify-content-between align-items-center mb-4">
+        <h2>Pedidos Online - Aguardando Aprovação</h2>
+        <Button variant="outline-primary" onClick={refresh} disabled={loading}>
+          {loading ? 'Atualizando...' : 'Atualizar Agora'}
+        </Button>
+      </div>
+
       {pendentes.length === 0 && <p>Nenhum pedido pendente.</p>}
+
       {pendentes.map(pedido => (
         <div key={pedido.id} className="card mb-3 shadow-sm">
           <div className="card-header bg-warning text-dark">
@@ -92,6 +112,7 @@ export default function PedidosOnline() {
           </div>
         </div>
       ))}
+
       {processados.length > 0 && (
         <>
           <hr className="my-5" />
@@ -112,6 +133,7 @@ export default function PedidosOnline() {
           ))}
         </>
       )}
+
       {totalPages > 1 && (
         <div className="d-flex justify-content-center mt-3">
           <Pagination>
