@@ -3,15 +3,37 @@ const bcrypt = require('bcrypt');
 
 class UsuarioController {
 	async index(req, res) {
-		try {
-			const result = await db.query('SELECT id, nome, email, cargo, ativo FROM usuarios');
-			res.json(result.rows);
-		} catch (error) {
-			console.error(error);
-			res.status(500).json({ error: 'Erro ao listar' });
-		}
-	}
+	  try {
+	    const { id } = req.params;
 	
+	    // Se tiver ID, busca um único usuário
+	    if (id) {
+	      const usuarioId = parseInt(id, 10);
+	      if (isNaN(usuarioId)) {
+	        return res.status(400).json({ error: 'ID inválido' });
+	      }
+	
+	      const result = await db.query(
+	        'SELECT id, nome, email, cargo, ativo FROM usuarios WHERE id = $1',
+	        [usuarioId]
+	      );
+	
+	      if (result.rows.length === 0) {
+	        return res.status(404).json({ error: 'Usuário não encontrado' });
+	      }
+	
+	      return res.json(result.rows[0]);
+	    }
+	
+	    // Se não tiver ID, lista todos
+	    const result = await db.query('SELECT id, nome, email, cargo, ativo FROM usuarios');
+	    res.json(result.rows);
+	  } catch (error) {
+	    console.error(error);
+	    res.status(500).json({ error: 'Erro ao listar' });
+	  }
+	}
+		
 	async update(req, res) {
     	const { id } = req.params;
     	const { nome, email, cargo, ativo, password } = req.body;
