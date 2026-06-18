@@ -68,7 +68,8 @@ class UsuarioController {
         	});
     	}
 	}
- async delete(req, res) {
+
+	async delete(req, res) {
   const usuarioId = req.params.id;
   const loggedUsuarioId = req.usuarioId;
 
@@ -78,56 +79,27 @@ class UsuarioController {
 
   try {
     console.log(`🗑️ Deletando usuário ${usuarioId}...`);
-    await db.query('BEGIN');
 
-    // Lista de dependências conhecidas (adicione outras se necessário)
-    const dependencias = [
-      { tabela: 'perfumes', coluna: 'usuario_id' },
-      { tabela: 'pedidos_online', coluna: 'cliente_id' },
-      // { tabela: 'vendas', coluna: 'vendedor_id' },
-      // { tabela: 'parcelas', coluna: 'venda_id' } // se existir
-    ];
-
-    for (const dep of dependencias) {
-      try {
-        console.log(`🔹 Deletando de ${dep.tabela} WHERE ${dep.coluna} = ${usuarioId}`);
-        await db.query(`DELETE FROM ${dep.tabela} WHERE ${dep.coluna} = $1`, [usuarioId]);
-        console.log(`✅ ${dep.tabela} limpa`);
-      } catch (err) {
-        // Se a tabela não existir, ignora
-        if (err.code === '42P01') {
-          console.warn(`⚠️ Tabela ${dep.tabela} não existe, ignorando.`);
-        } else {
-          throw err; // outro erro inesperado
-        }
-      }
-    }
-
-    // Tenta deletar o usuário
+    // Agora, com CASCADE, basta deletar o usuário
     const result = await db.query(
       'DELETE FROM usuarios WHERE id = $1 RETURNING id',
       [usuarioId]
     );
 
     if (result.rows.length === 0) {
-      await db.query('ROLLBACK');
       return res.status(404).json({ error: 'Usuário não encontrado' });
     }
 
-    await db.query('COMMIT');
-    console.log(`✅ Usuário ${usuarioId} excluído com sucesso`);
-    return res.json({ message: 'Usuário e dependências excluídos com sucesso' });
+    console.log(`✅ Usuário ${usuarioId} e todas as dependências excluídos com sucesso`);
+    return res.json({ message: 'Usuário excluído com sucesso' });
 
   } catch (error) {
-    await db.query('ROLLBACK');
     console.error('❌ ERRO NO DELETE:', error);
 
-    // Se for erro de chave estrangeira, extrai a tabela do detail
+    // Se ainda houver erro de FK, é porque alguma FK não foi configurada com CASCADE
     if (error.code === '23503') {
-      const tableMatch = error.detail?.match(/table "([^"]+)"/);
-      const table = tableMatch ? tableMatch[1] : 'desconhecida';
       return res.status(400).json({
-        error: `Usuário ainda possui registros na tabela "${table}". Adicione essa tabela à lista de dependências.`,
+        error: 'Falha ao excluir: ainda há dependências. Verifique se todas as FKs têm ON DELETE CASCADE.',
         detail: error.detail
       });
     }
