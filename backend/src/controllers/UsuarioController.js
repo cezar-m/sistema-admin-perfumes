@@ -72,34 +72,30 @@ class UsuarioController {
 	async delete(req, res) {
 	  const usuarioId = req.params.id;
 	  const loggedUsuarioId = req.usuarioId;
-	
-	  if (Number(usuarioId) === Number(loggedUsuarioId)) {
-	    return res.status(403).json({ error: 'Você não pode excluir sua própria conta' });
-	  }
-	
+
 	  try {
-	    console.log(`🗑️ Iniciando exclusão do usuário ${usuarioId}`);
+	    console.log(`Iniciando exclusão do usuário ${usuarioId}`);
 	
 	    await db.query('BEGIN');
 	
 	    // 1. Deleta parcelas (se tabela existir)
 	    try {
-	      console.log('🔹 Deletando parcelas...');
+	      console.log(' Deletando parcelas...');
 	      await db.query(
 	        `DELETE FROM parcelas WHERE venda_id IN (SELECT id FROM vendas WHERE vendedor_id = $1)`,
 	        [usuarioId]
 	      );
-	      console.log('✅ Parcelas deletadas');
+	      console.log('Parcelas deletadas');
 	    } catch (err) {
-	      console.warn('⚠️ Erro ao deletar parcelas (provavelmente tabela não existe):', err.message);
+	      console.warn(' Erro ao deletar parcelas (provavelmente tabela não existe):', err.message);
 	      // Ignora e continua
 	    }
 	
 	    // 2. Deleta vendas
 	    try {
-	      console.log('🔹 Deletando vendas...');
+	      console.log(' Deletando vendas...');
 	      await db.query('DELETE FROM vendas WHERE vendedor_id = $1', [usuarioId]);
-	      console.log('✅ Vendas deletadas');
+	      console.log(' Vendas deletadas');
 	    } catch (err) {
 	      console.warn('⚠️ Erro ao deletar vendas (provavelmente tabela não existe):', err.message);
 	      // Ignora e continua
