@@ -82,31 +82,29 @@ class UsuarioController {
     console.log(`🗑️ Iniciando exclusão do usuário ${usuarioId}`);
     await db.query('BEGIN');
 
-    // Tenta deletar dependências, mas ignora erros de tabela inexistente
-    const dependencias = [
-      { nome: 'parcelas', query: 'DELETE FROM parcelas WHERE venda_id IN (SELECT id FROM vendas WHERE vendedor_id = $1)' },
-      { nome: 'vendas', query: 'DELETE FROM vendas WHERE vendedor_id = $1' },
-      { nome: 'perfumes', query: 'DELETE FROM perfumes WHERE usuario_id = $1' }
+    // Lista de comandos DELETE para tentar (em ordem)
+    const deletes = [
+      'DELETE FROM parcelas WHERE venda_id IN (SELECT id FROM vendas WHERE vendedor_id = $1)',
+      'DELETE FROM vendas WHERE vendedor_id = $1',
+      'DELETE FROM perfumes WHERE usuario_id = $1'
     ];
 
-    for (const dep of dependencias) {
+    for (const sql of deletes) {
       try {
-        console.log(`🔹 Deletando ${dep.nome}...`);
-        await db.query(dep.query, [usuarioId]);
-        console.log(`✅ ${dep.nome} deletados`);
+        await db.query(sql, [usuarioId]);
+        console.log(`✅ Query executada: ${sql.substring(0, 50)}...`);
       } catch (err) {
-        // Se o erro for "relation does not exist", apenas avisa e continua
-        if (err.code === '42P01') { // PostgreSQL: relação não existe
-          console.warn(`⚠️ Tabela ${dep.nome} não existe, ignorando.`);
+        // Ignora apenas se for "tabela não existe" (código 42P01)
+        if (err.code === '42P01') {
+          console.warn(`⚠️ Tabela não existe, ignorando: ${err.message}`);
         } else {
-          // Outro erro inesperado – relança para ser tratado no catch externo
+          // Qualquer outro erro (ex: violação de chave estrangeira) – relança
           throw err;
         }
       }
     }
 
-    // Deleta o usuário
-    console.log('🔹 Deletando usuário...');
+    // Agora deleta o usuário
     const result = await db.query(
       'DELETE FROM usuarios WHERE id = $1 RETURNING id',
       [usuarioId]
@@ -124,10 +122,12 @@ class UsuarioController {
   } catch (error) {
     await db.query('ROLLBACK');
     console.error('❌ ERRO FATAL NO DELETE:', error);
+    // Retorna erro com detalhes para o frontend (ajuda a debugar)
     return res.status(500).json({
       error: error.message,
       detail: error.detail || '',
-      code: error.code || ''
+      code: error.code || '',
+      table: error.table || ''
     });
   }
 }
