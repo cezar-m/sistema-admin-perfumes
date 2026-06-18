@@ -79,33 +79,52 @@ class UsuarioController {
 
   try {
     console.log(`🗑️ Deletando usuário ${usuarioId}...`);
-
     await db.query('BEGIN');
 
-    // Lista de tabelas que podem referenciar o usuário
-    const dependencias = [
-      { nome: 'perfumes', query: 'DELETE FROM perfumes WHERE usuario_id = $1' },
-      { nome: 'pedidos_online', query: 'DELETE FROM pedidos_online WHERE cliente_id = $1' },
-      { nome: 'vendas', query: 'DELETE FROM vendas WHERE vendedor_id = $1' },
-      { nome: 'parcelas', query: 'DELETE FROM parcelas WHERE venda_id IN (SELECT id FROM vendas WHERE vendedor_id = $1)' }
-    ];
+    // 1. Descobre todas as tabelas que têm FK para usuarios(id)
+    const fkQuery = `
+      SELECT
+        tc.table_name,
+        kcu.column_name
+      FROM information_schema.table_constraints tc
+      JOIN information_schema.key_column_usage kcu
+        ON tc.constraint_name = kcu.constraint_name
+      WHERE tc.constraint_type = 'FOREIGN KEY'
+        AND kcu.referenced_table_name = 'usuarios'
+        AND kcu.referenced_column_name = 'id'
+    `;
+    const fkResult = await db.query(fkQuery);
+    const tabelas = fkResult.rows.map(row => row.table_name);
 
-    for (const dep of dependencias) {
-      try {
-        console.log(`🔹 Deletando ${dep.nome}...`);
-        await db.query(dep.query, [usuarioId]);
-        console.log(`✅ ${dep.nome} deletados`);
-      } catch (err) {
-        if (err.code === '42P01') { // tabela não existe
-          console.warn(`⚠️ Tabela ${dep.nome} não existe, ignorando.`);
-        } else {
-          // Se for outro erro, relança para interromper a transação
-          throw err;
-        }
+    console.log(`📋 Tabelas com FK para usuarios:`, tabelas);
+
+    // 2. Para cada tabela, deleta os registros que referenciam o usuarioId
+    for (const tabela of tabelas) {
+      // Descobre o nome da coluna que referencia usuarios.id
+      const colQuery = `
+        SELECT kcu.column_name
+        FROM information_schema.table_constraints tc
+        JOIN information_schema.key_column_usage kcu
+          ON tc.constraint_name = kcu.constraint_name
+        WHERE tc.constraint_type = 'FOREIGN KEY'
+          AND kcu.referenced_table_name = 'usuarios'
+          AND kcu.referenced_column_name = 'id'
+          AND tc.table_name = $1
+      `;
+      const colResult = await db.query(colQuery, [tabela]);
+      const coluna = colResult.rows[0]?.column_name;
+
+      if (!coluna) {
+        console.warn(`⚠️ Não encontrou coluna para tabela ${tabela}, pulando.`);
+        continue;
       }
+
+      console.log(`🔹 Deletando da tabela ${tabela} (coluna ${coluna})...`);
+      await db.query(`DELETE FROM ${tabela} WHERE ${coluna} = $1`, [usuarioId]);
+      console.log(`✅ ${tabela} limpa`);
     }
 
-    // Deleta o usuário
+    // 3. Deleta o usuário
     const result = await db.query(
       'DELETE FROM usuarios WHERE id = $1 RETURNING id',
       [usuarioId]
@@ -118,15 +137,18 @@ class UsuarioController {
 
     await db.query('COMMIT');
     console.log(`✅ Usuário ${usuarioId} excluído com sucesso`);
-    return res.json({ message: 'Usuário e dependências excluídos com sucesso' });
+    return res.json({ message: 'Usuário e todas as dependências excluídos com sucesso' });
 
   } catch (error) {
     await db.query('ROLLBACK');
     console.error('❌ ERRO FATAL NO DELETE:', error);
 
     if (error.code === '23503') {
+      // Tenta extrair a tabela e coluna do erro
+      const tableMatch = error.detail?.match(/table "([^"]+)"/);
+      const table = tableMatch ? tableMatch[1] : 'desconhecida';
       return res.status(400).json({
-        error: 'Usuário possui dependências não mapeadas. Verifique logs para identificar a tabela.',
+        error: `Usuário ainda possui registros na tabela "${table}".`,
         detail: error.detail
       });
     }
@@ -138,6 +160,7 @@ class UsuarioController {
     });
   }
 }
+ 
 }
 
 module.exports = new UsuarioController();
