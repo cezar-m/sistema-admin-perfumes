@@ -79,27 +79,52 @@ class UsuarioController {
 
   try {
     console.log(`🗑️ Deletando usuário ${usuarioId}...`);
+    await db.query('BEGIN');
 
-    // Agora, com CASCADE, basta deletar o usuário
+    // 1. Deleta parcelas de vendas do usuário
+    await db.query(
+      `DELETE FROM parcelas WHERE venda_id IN 
+        (SELECT id FROM vendas WHERE vendedor_id = $1 OR perfume_id IN 
+          (SELECT id FROM perfumes WHERE usuario_id = $1))`,
+      [usuarioId]
+    );
+
+    // 2. Deleta vendas do usuário (como vendedor ou de seus perfumes)
+    await db.query(
+      'DELETE FROM vendas WHERE vendedor_id = $1 OR perfume_id IN (SELECT id FROM perfumes WHERE usuario_id = $1)',
+      [usuarioId]
+    );
+
+    // 3. Deleta pedidos online (se existir)
+    await db.query('DELETE FROM pedidos_online WHERE cliente_id = $1', [usuarioId]);
+
+    // 4. Deleta perfumes do usuário
+    await db.query('DELETE FROM perfumes WHERE usuario_id = $1', [usuarioId]);
+
+    // 5. Deleta o usuário
     const result = await db.query(
       'DELETE FROM usuarios WHERE id = $1 RETURNING id',
       [usuarioId]
     );
 
     if (result.rows.length === 0) {
+      await db.query('ROLLBACK');
       return res.status(404).json({ error: 'Usuário não encontrado' });
     }
 
-    console.log(`✅ Usuário ${usuarioId} e todas as dependências excluídos com sucesso`);
-    return res.json({ message: 'Usuário excluído com sucesso' });
+    await db.query('COMMIT');
+    console.log(`✅ Usuário ${usuarioId} excluído com sucesso`);
+    return res.json({ message: 'Usuário e todas as dependências excluídos' });
 
   } catch (error) {
+    await db.query('ROLLBACK');
     console.error('❌ ERRO NO DELETE:', error);
 
-    // Se ainda houver erro de FK, é porque alguma FK não foi configurada com CASCADE
     if (error.code === '23503') {
+      const tableMatch = error.detail?.match(/table "([^"]+)"/);
+      const table = tableMatch ? tableMatch[1] : 'desconhecida';
       return res.status(400).json({
-        error: 'Falha ao excluir: ainda há dependências. Verifique se todas as FKs têm ON DELETE CASCADE.',
+        error: `Usuário ainda possui registros na tabela "${table}".`,
         detail: error.detail
       });
     }
@@ -111,6 +136,7 @@ class UsuarioController {
     });
   }
 }
+
 }
 
 module.exports = new UsuarioController();
