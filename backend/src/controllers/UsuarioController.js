@@ -70,73 +70,67 @@ class UsuarioController {
 	}
 	
 	async delete(req, res) {
-	  const usuarioId = req.params.id;
-	  const loggedUsuarioId = req.usuarioId;
+  const usuarioId = req.params.id;
+  const loggedUsuarioId = req.usuarioId;
 
-	  try {
-	    console.log(`Iniciando exclusão do usuário ${usuarioId}`);
-	
-	    await db.query('BEGIN');
-	
-	    // 1. Deleta parcelas (se tabela existir)
-	    try {
-	      console.log(' Deletando parcelas...');
-	      await db.query(
-	        `DELETE FROM parcelas WHERE venda_id IN (SELECT id FROM vendas WHERE vendedor_id = $1)`,
-	        [usuarioId]
-	      );
-	      console.log('Parcelas deletadas');
-	    } catch (err) {
-	      console.warn(' Erro ao deletar parcelas (provavelmente tabela não existe):', err.message);
-	      // Ignora e continua
-	    }
-	
-	    // 2. Deleta vendas
-	    try {
-	      console.log(' Deletando vendas...');
-	      await db.query('DELETE FROM vendas WHERE vendedor_id = $1', [usuarioId]);
-	      console.log(' Vendas deletadas');
-	    } catch (err) {
-	      console.warn('⚠️ Erro ao deletar vendas (provavelmente tabela não existe):', err.message);
-	      // Ignora e continua
-	    }
-	
-	    // 3. Deleta perfumes
-	    try {
-	      console.log('🔹 Deletando perfumes...');
-	      await db.query('DELETE FROM perfumes WHERE usuario_id = $1', [usuarioId]);
-	      console.log('✅ Perfumes deletados');
-	    } catch (err) {
-	      console.warn('⚠️ Erro ao deletar perfumes (provavelmente tabela não existe):', err.message);
-	      // Ignora e continua
-	    }
-	
-	    // 4. Deleta o usuário
-	    console.log('🔹 Deletando usuário...');
-	    const result = await db.query(
-	      'DELETE FROM usuarios WHERE id = $1 RETURNING id',
-	      [usuarioId]
-	    );
-	
-	    if (result.rows.length === 0) {
-	      await db.query('ROLLBACK');
-	      return res.status(404).json({ error: 'Usuário não encontrado' });
-	    }
-	
-	    await db.query('COMMIT');
-	    console.log(`✅ Usuário ${usuarioId} excluído com sucesso`);
-	    return res.json({ message: 'Usuário excluído com sucesso' });
-	
-	  } catch (error) {
-	    await db.query('ROLLBACK');
-	    console.error('❌ ERRO FATAL NO DELETE:', error);
-	    return res.status(500).json({
-	      error: error.message,
-	      detail: error.detail || '',
-	      code: error.code || ''
-	    });
-	  }
-	}
+  // Impede auto-exclusão
+  if (Number(usuarioId) === Number(loggedUsuarioId)) {
+    return res.status(403).json({ error: 'Você não pode excluir sua própria conta' });
+  }
+
+  try {
+    console.log(`🗑️ Iniciando exclusão do usuário ${usuarioId}`);
+    await db.query('BEGIN');
+
+    // Tenta deletar dependências, mas ignora erros de tabela inexistente
+    const dependencias = [
+      { nome: 'parcelas', query: 'DELETE FROM parcelas WHERE venda_id IN (SELECT id FROM vendas WHERE vendedor_id = $1)' },
+      { nome: 'vendas', query: 'DELETE FROM vendas WHERE vendedor_id = $1' },
+      { nome: 'perfumes', query: 'DELETE FROM perfumes WHERE usuario_id = $1' }
+    ];
+
+    for (const dep of dependencias) {
+      try {
+        console.log(`🔹 Deletando ${dep.nome}...`);
+        await db.query(dep.query, [usuarioId]);
+        console.log(`✅ ${dep.nome} deletados`);
+      } catch (err) {
+        // Se o erro for "relation does not exist", apenas avisa e continua
+        if (err.code === '42P01') { // PostgreSQL: relação não existe
+          console.warn(`⚠️ Tabela ${dep.nome} não existe, ignorando.`);
+        } else {
+          // Outro erro inesperado – relança para ser tratado no catch externo
+          throw err;
+        }
+      }
+    }
+
+    // Deleta o usuário
+    console.log('🔹 Deletando usuário...');
+    const result = await db.query(
+      'DELETE FROM usuarios WHERE id = $1 RETURNING id',
+      [usuarioId]
+    );
+
+    if (result.rows.length === 0) {
+      await db.query('ROLLBACK');
+      return res.status(404).json({ error: 'Usuário não encontrado' });
+    }
+
+    await db.query('COMMIT');
+    console.log(`✅ Usuário ${usuarioId} excluído com sucesso`);
+    return res.json({ message: 'Usuário excluído com sucesso' });
+
+  } catch (error) {
+    await db.query('ROLLBACK');
+    console.error('❌ ERRO FATAL NO DELETE:', error);
+    return res.status(500).json({
+      error: error.message,
+      detail: error.detail || '',
+      code: error.code || ''
+    });
+  }
+}
 }
 
 module.exports = new UsuarioController();
