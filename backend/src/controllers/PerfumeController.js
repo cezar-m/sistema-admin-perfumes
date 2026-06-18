@@ -70,76 +70,77 @@ class PerfumeController {
 	}
 
 	async store(req, res) {
-  console.log('🔵 STORE - Iniciando');
-
-  // 1. Verifica permissão
-  if (req.usuarioCargo !== "admin" && req.usuarioCargo !== "funcionario") {
-    return res.status(403).json({ error: 'Apenas funcionários ou administradores podem cadastrar perfumes' });
-  }
-
-  // 2. Verifica autenticação
-  if (!req.usuarioId) {
-    console.error('❌ usuarioId não definido no request');
-    return res.status(401).json({ error: 'Usuário não autenticado' });
-  }
-
-  // 3. Processa o upload com multer (com try/catch próprio)
-  upload(req, res, async (err) => {
-    if (err) {
-      console.error('❌ Erro no multer:', err);
-      return res.status(400).json({ error: 'Erro no upload: ' + err.message });
-    }
-
-    try {
-      // 4. Extrai e limpa os dados
-      const { nome, descricao, familia, genero } = req.body;
-      
-      // Converte preço (aceita vírgula ou ponto)
-      let preco = parseFloat(String(req.body.preco).replace(',', '.').replace(/[^0-9.]/g, ''));
-      if (isNaN(preco) || preco < 0) {
-        console.warn('⚠️ Preço inválido:', req.body.preco);
-        return res.status(400).json({ error: 'Preço inválido. Use formato como 199,90' });
-      }
-
-      let quantidade = parseInt(req.body.quantidade, 10);
-      if (isNaN(quantidade) || quantidade < 0) {
-        console.warn('⚠️ Quantidade inválida:', req.body.quantidade);
-        return res.status(400).json({ error: 'Quantidade inválida' });
-      }
-
-      const imagem = req.file ? req.file.filename : null;
-      const usuario_id = req.usuarioId;
-
-      console.log('📦 Dados a inserir:', { nome, descricao, preco, quantidade, familia, genero, imagem, usuario_id });
-
-      // 5. Query INSERT com tratamento para criado_em
-      // Se a coluna criado_em não tiver DEFAULT, use NOW() explicitamente
-      const query = `
-        INSERT INTO perfumes (nome, descricao, preco, quantidade, familia, genero, imagem, usuario_id, criado_em)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())
-        RETURNING id
-      `;
-      const values = [nome, descricao, preco, quantidade, familia, genero, imagem, usuario_id];
-
-      console.log('🔍 Executando query:', query);
-      console.log('🔍 Com valores:', values);
-
-      const result = await db.query(query, values);
-
-      console.log('✅ Perfume inserido com ID:', result.rows[0].id);
-      res.status(201).json({ id: result.rows[0].id, message: 'Perfume cadastrado' });
-
-    } catch (error) {
-      console.error('❌ ERRO FATAL NO STORE:', error);
-      // Retorna stack para depuração (remova em produção)
-      res.status(500).json({ 
-        error: error.message, 
-        stack: error.stack,
-        details: 'Verifique logs do servidor para mais informações'
-      });
-    }
-  });
-}
+	  console.log('🔵 STORE - Iniciando');
+	
+	  // 1. Verifica permissão
+	  if (req.usuarioCargo !== "admin" && req.usuarioCargo !== "funcionario") {
+	    return res.status(403).json({ error: 'Apenas funcionários ou administradores podem cadastrar perfumes' });
+	  }
+	
+	  // 2. Verifica autenticação
+	  if (!req.usuarioId) {
+	    console.error('❌ usuarioId não definido no request');
+	    return res.status(401).json({ error: 'Usuário não autenticado' });
+	  }
+	
+	  // 3. Processa o upload com multer (com try/catch próprio)
+	  upload(req, res, async (err) => {
+	    if (err) {
+	      console.error('❌ Erro no multer:', err);
+	      return res.status(400).json({ error: 'Erro no upload: ' + err.message });
+	    }
+	
+	    try {
+	      // 4. Extrai e limpa os dados
+	      const { nome, descricao, familia, genero } = req.body;
+	      
+	      // Converte preço (aceita vírgula ou ponto)
+	      let preco = parseFloat(String(req.body.preco).replace(',', '.').replace(/[^0-9.]/g, ''));
+	      if (isNaN(preco) || preco < 0) {
+	        console.warn('⚠️ Preço inválido:', req.body.preco);
+	        return res.status(400).json({ error: 'Preço inválido. Use formato como 199,90' });
+	      }
+	
+	      let quantidade = parseInt(req.body.quantidade, 10);
+	      if (isNaN(quantidade) || quantidade < 0) {
+	        console.warn('⚠️ Quantidade inválida:', req.body.quantidade);
+	        return res.status(400).json({ error: 'Quantidade inválida' });
+	      }
+	
+	      const imagem = req.file ? req.file.filename : null;
+	      const usuario_id = req.usuarioId;
+	
+	      console.log('📦 Dados a inserir:', { nome, descricao, preco, quantidade, familia, genero, imagem, usuario_id });
+	
+	      // 5. Query INSERT com tratamento para criado_em
+	      // Se a coluna criado_em não tiver DEFAULT, use NOW() explicitamente
+	      const query = `
+	        INSERT INTO perfumes (nome, descricao, preco, quantidade, familia, genero, imagem, usuario_id, criado_em)
+	        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())
+	        RETURNING id
+	      `;
+	      const values = [nome, descricao, preco, quantidade, familia, genero, imagem, usuario_id];
+	
+	      console.log('🔍 Executando query:', query);
+	      console.log('🔍 Com valores:', values);
+	
+	      const result = await db.query(query, values);
+	
+	      console.log('✅ Perfume inserido com ID:', result.rows[0].id);
+	      res.status(201).json({ id: result.rows[0].id, message: 'Perfume cadastrado' });
+	
+	    } catch (error) {
+	      console.error('❌ ERRO FATAL NO STORE:', error);
+	      // Retorna stack para depuração (remova em produção)
+	      res.status(500).json({ 
+	        error: error.message, 
+	        stack: error.stack,
+	        details: 'Verifique logs do servidor para mais informações'
+	      });
+	    }
+	  });
+	}
+	
 	async update(req, res) {
     	upload(req, res, async (err) => {
 	        if (err) {
