@@ -73,45 +73,49 @@ class UsuarioController {
   const usuarioId = req.params.id;
   const loggedUsuarioId = req.usuarioId;
 
-  // Não deixa excluir a própria conta
   if (Number(usuarioId) === Number(loggedUsuarioId)) {
     return res.status(403).json({ error: 'Você não pode excluir sua própria conta' });
   }
 
   try {
-    console.log(`🗑️ Deletando usuário ${usuarioId} e seus perfumes...`);
-    await db.query('BEGIN');
+    console.log(`🗑️ Deletando usuário ${usuarioId}...`);
 
-    // 1. Deleta todos os perfumes do usuário (por causa da chave estrangeira)
-    const deletePerfumes = await db.query(
-      'DELETE FROM perfumes WHERE usuario_id = $1',
+    // Primeiro, verifica quantos perfumes o usuário tem
+    const checkPerfumes = await db.query(
+      'SELECT COUNT(*) FROM perfumes WHERE usuario_id = $1',
       [usuarioId]
     );
-    console.log(`✅ ${deletePerfumes.rowCount} perfumes deletados`);
+    const count = parseInt(checkPerfumes.rows[0].count);
+    console.log(`📦 Usuário tem ${count} perfumes`);
 
-    // 2. Deleta o usuário
+    // Deleta os perfumes
+    if (count > 0) {
+      const deleteResult = await db.query(
+        'DELETE FROM perfumes WHERE usuario_id = $1',
+        [usuarioId]
+      );
+      console.log(`✅ ${deleteResult.rowCount} perfumes deletados`);
+    }
+
+    // Agora tenta deletar o usuário
     const result = await db.query(
       'DELETE FROM usuarios WHERE id = $1 RETURNING id',
       [usuarioId]
     );
 
     if (result.rows.length === 0) {
-      await db.query('ROLLBACK');
       return res.status(404).json({ error: 'Usuário não encontrado' });
     }
 
-    await db.query('COMMIT');
     console.log(`✅ Usuário ${usuarioId} excluído com sucesso`);
     return res.json({ message: 'Usuário e perfumes excluídos com sucesso' });
 
   } catch (error) {
-    await db.query('ROLLBACK');
     console.error('❌ ERRO NO DELETE:', error);
 
-    // Se for erro de chave estrangeira (caso ainda haja dependência)
     if (error.code === '23503') {
       return res.status(400).json({
-        error: 'Usuário possui registros associados que não puderam ser removidos.',
+        error: 'Usuário possui perfumes que não puderam ser deletados. Verifique se a FK está correta.',
         detail: error.detail
       });
     }
