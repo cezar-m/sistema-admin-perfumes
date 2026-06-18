@@ -68,8 +68,7 @@ class UsuarioController {
         	});
     	}
 	}
-	
-	async delete(req, res) {
+ async delete(req, res) {
   const usuarioId = req.params.id;
   const loggedUsuarioId = req.usuarioId;
 
@@ -81,50 +80,30 @@ class UsuarioController {
     console.log(`🗑️ Deletando usuário ${usuarioId}...`);
     await db.query('BEGIN');
 
-    // 1. Descobre todas as tabelas que têm FK para usuarios(id)
-    const fkQuery = `
-      SELECT
-        tc.table_name,
-        kcu.column_name
-      FROM information_schema.table_constraints tc
-      JOIN information_schema.key_column_usage kcu
-        ON tc.constraint_name = kcu.constraint_name
-      WHERE tc.constraint_type = 'FOREIGN KEY'
-        AND kcu.referenced_table_name = 'usuarios'
-        AND kcu.referenced_column_name = 'id'
-    `;
-    const fkResult = await db.query(fkQuery);
-    const tabelas = fkResult.rows.map(row => row.table_name);
+    // Lista de dependências conhecidas (adicione outras se necessário)
+    const dependencias = [
+      { tabela: 'perfumes', coluna: 'usuario_id' },
+      { tabela: 'pedidos_online', coluna: 'cliente_id' },
+      // { tabela: 'vendas', coluna: 'vendedor_id' },
+      // { tabela: 'parcelas', coluna: 'venda_id' } // se existir
+    ];
 
-    console.log(`📋 Tabelas com FK para usuarios:`, tabelas);
-
-    // 2. Para cada tabela, deleta os registros que referenciam o usuarioId
-    for (const tabela of tabelas) {
-      // Descobre o nome da coluna que referencia usuarios.id
-      const colQuery = `
-        SELECT kcu.column_name
-        FROM information_schema.table_constraints tc
-        JOIN information_schema.key_column_usage kcu
-          ON tc.constraint_name = kcu.constraint_name
-        WHERE tc.constraint_type = 'FOREIGN KEY'
-          AND kcu.referenced_table_name = 'usuarios'
-          AND kcu.referenced_column_name = 'id'
-          AND tc.table_name = $1
-      `;
-      const colResult = await db.query(colQuery, [tabela]);
-      const coluna = colResult.rows[0]?.column_name;
-
-      if (!coluna) {
-        console.warn(`⚠️ Não encontrou coluna para tabela ${tabela}, pulando.`);
-        continue;
+    for (const dep of dependencias) {
+      try {
+        console.log(`🔹 Deletando de ${dep.tabela} WHERE ${dep.coluna} = ${usuarioId}`);
+        await db.query(`DELETE FROM ${dep.tabela} WHERE ${dep.coluna} = $1`, [usuarioId]);
+        console.log(`✅ ${dep.tabela} limpa`);
+      } catch (err) {
+        // Se a tabela não existir, ignora
+        if (err.code === '42P01') {
+          console.warn(`⚠️ Tabela ${dep.tabela} não existe, ignorando.`);
+        } else {
+          throw err; // outro erro inesperado
+        }
       }
-
-      console.log(`🔹 Deletando da tabela ${tabela} (coluna ${coluna})...`);
-      await db.query(`DELETE FROM ${tabela} WHERE ${coluna} = $1`, [usuarioId]);
-      console.log(`✅ ${tabela} limpa`);
     }
 
-    // 3. Deleta o usuário
+    // Tenta deletar o usuário
     const result = await db.query(
       'DELETE FROM usuarios WHERE id = $1 RETURNING id',
       [usuarioId]
@@ -137,18 +116,18 @@ class UsuarioController {
 
     await db.query('COMMIT');
     console.log(`✅ Usuário ${usuarioId} excluído com sucesso`);
-    return res.json({ message: 'Usuário e todas as dependências excluídos com sucesso' });
+    return res.json({ message: 'Usuário e dependências excluídos com sucesso' });
 
   } catch (error) {
     await db.query('ROLLBACK');
-    console.error('❌ ERRO FATAL NO DELETE:', error);
+    console.error('❌ ERRO NO DELETE:', error);
 
+    // Se for erro de chave estrangeira, extrai a tabela do detail
     if (error.code === '23503') {
-      // Tenta extrair a tabela e coluna do erro
       const tableMatch = error.detail?.match(/table "([^"]+)"/);
       const table = tableMatch ? tableMatch[1] : 'desconhecida';
       return res.status(400).json({
-        error: `Usuário ainda possui registros na tabela "${table}".`,
+        error: `Usuário ainda possui registros na tabela "${table}". Adicione essa tabela à lista de dependências.`,
         detail: error.detail
       });
     }
@@ -160,7 +139,6 @@ class UsuarioController {
     });
   }
 }
- 
 }
 
 module.exports = new UsuarioController();
