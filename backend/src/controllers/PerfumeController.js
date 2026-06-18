@@ -12,69 +12,62 @@ const upload = multer({ storage }).single('imagem');
 
 class PerfumeController {
 	async index(req, res) {
-		 console.log('ENTROU NO INDEX');
-		try {
-			let usuarioId = req.usuarioId;
-			let usuarioCargo = req.usuarioCargo;
-			
-			// Log para diagnóstico
-			console.log('========================================');
-			console.log('PerfumeController.index')
-			console.log('req.usuarioId:', usuarioId);
-			console.log('req.usuarioCargo:', usuarioCargo);
-			console.log('Header Authorization:', req.headers.authorization);
-			
-			// Fallback: se não veio do middleware, tenta extrair do token
-			if(!usuarioId && req.headers.authorization) {
-				const token = req.headers.authorization.split(' ')[1];
-				if(token) {
-					try {
-						const decoded = require('jsonwebtoken').verify(token, process.env.JWT_SECRET);
-						usuarioId = decoded.id;
-						usuarioCargo = decoded.cargo;
-						console.log('Token decodificado manualmente: id=', usuarioId, 'cargo=', usuarioCargo);
-					} catch (e) {
-						console.log('Token inválido na tentativa manual');
-					}
-				}
-			}
-		
-			let perfumes = [];
-			
-			// CORREÇÃO: clientes (cargo 'cliente') também veem todos os perfumes
-			if(!usuarioId || usuarioCargo === 'cliente') {
-				console.log('Público ou cliente: retorna TODOS os perfumes');
-				const result = await db.query('SELECT * FROM perfumes ORDER BY criado_em DESC');
-				perfumes = result.rows;
-			}
-			// Admin: todos os perfumes + nome do criador
-			else if(usuarioCargo == 'admin') {
-				console.log('Admin: retornando TODOS os perfumes (com criador)');
-				const result = await db.query(`
-					SELECT p.*, u.nome as criado_por
-					FROM perfumes p
-					LEFT JOIN usuarios u ON p.usuario_id = u.id
-					ORDER BY p.criado_em DESC
-				`);
-				perfumes = result.rows;
-			}
-			// Funcionário: apenas os perfumes que ele mesmo cadastrou
-			else {
-				console.log(`Funcionário ${usuarioId}: retornando apenas perfumes com usuario_id = ${usuarioId}`);
-				const values = [usuarioId];
-				const result = await db.query(
-					'SELECT * FROM perfumes WHERE usuario_id = $1 ORDER BY criado_em DESC',
-					values
-				);
-				perfumes = result.rows;
-			}
-			
-			res.json(perfumes);
-		} catch (error) {
-			console.error('Erro fatal no index:', error);
-			res.status(500).json({ error: error.message });
-		}
-	}
+  console.log('ENTROU NO INDEX');
+  try {
+    let usuarioId = req.usuarioId;
+    let usuarioCargo = req.usuarioCargo;
+
+    // Fallback manual do token
+    if (!usuarioId && req.headers.authorization) {
+      const token = req.headers.authorization.split(' ')[1];
+      if (token) {
+        try {
+          const decoded = require('jsonwebtoken').verify(token, process.env.JWT_SECRET);
+          usuarioId = decoded.id;
+          usuarioCargo = decoded.cargo;
+        } catch (e) {
+          console.log('Token inválido na tentativa manual');
+        }
+      }
+    }
+
+    let perfumes = [];
+
+    // Público ou cliente
+    if (!usuarioId || usuarioCargo === 'cliente') {
+      console.log('Público ou cliente: retorna TODOS os perfumes');
+      const result = await db.query('SELECT * FROM perfumes ORDER BY criado_em DESC');
+      perfumes = result.rows;
+    }
+    // Admin
+    else if (usuarioCargo === 'admin') {
+      console.log('Admin: retornando TODOS os perfumes (com criador)');
+      // 👇 Ajuste os nomes das colunas conforme seu banco
+      const result = await db.query(`
+        SELECT p.*, u.nome as criado_por
+        FROM perfumes p
+        LEFT JOIN usuarios u ON p.usuario_id = u.id
+        ORDER BY p.criado_em DESC
+      `);
+      perfumes = result.rows;
+    }
+    // Funcionário
+    else {
+      console.log(`Funcionário ${usuarioId}: retornando apenas perfumes com usuario_id = ${usuarioId}`);
+      const result = await db.query(
+        'SELECT * FROM perfumes WHERE usuario_id = $1 ORDER BY criado_em DESC',
+        [usuarioId]
+      );
+      perfumes = result.rows;
+    }
+
+    res.json(perfumes);
+  } catch (error) {
+    console.error('Erro fatal no index:', error);
+    // Retorna o stack para depuração (remova em produção)
+    res.status(500).json({ error: error.message, stack: error.stack });
+  }
+}
 
 	// Os demais métodos (store, upate, delete) permanecem iguais
 	async store(req, res) {
