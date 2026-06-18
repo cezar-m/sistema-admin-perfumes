@@ -70,47 +70,54 @@ class UsuarioController {
 	}
 	
 	async delete(req, res) {
-	  const usuarioId = req.params.id;
-	  const loggedUsuarioId = req.usuarioId;
-	
-	  if (Number(usuarioId) === Number(loggedUsuarioId)) {
-	    return res.status(403).json({ error: 'Você não pode excluir sua própria conta' });
-	  }
-	
-	  try {
-	    console.log(`🗑️ Deletando usuário ${usuarioId}...`);
-	
-	    // Tenta deletar APENAS o usuário (sem transação)
-	    const result = await db.query(
-	      'DELETE FROM usuarios WHERE id = $1 RETURNING id',
-	      [usuarioId]
-	    );
-	
-	    if (result.rows.length === 0) {
-	      return res.status(404).json({ error: 'Usuário não encontrado' });
-	    }
-	
-	    console.log(`✅ Usuário ${usuarioId} excluído com sucesso`);
-	    return res.json({ message: 'Usuário excluído com sucesso' });
-	
-	  } catch (error) {
-	    console.error('❌ ERRO NO DELETE:', error);
-	
-	    // Se for violação de chave estrangeira (código 23503)
-	    if (error.code === '23503') {
-	      return res.status(400).json({
-	        error: 'Este usuário possui registros associados (perfumes, vendas ou parcelas). Exclua esses registros primeiro ou configure CASCADE.'
-	      });
-	    }
-	
-	    // Outros erros
-	    return res.status(500).json({
-	      error: error.message,
-	      code: error.code,
-	      detail: error.detail
-	    });
-	  }
-	}
+  const usuarioId = req.params.id;
+  const loggedUsuarioId = req.usuarioId;
+
+  if (Number(usuarioId) === Number(loggedUsuarioId)) {
+    return res.status(403).json({ error: 'Você não pode excluir sua própria conta' });
+  }
+
+  try {
+    console.log(`🗑️ Deletando usuário ${usuarioId}...`);
+    await db.query('BEGIN');
+
+    // 1. Deleta vendas que referenciam perfumes do usuário
+    await db.query(
+      'DELETE FROM vendas WHERE perfume_id IN (SELECT id FROM perfumes WHERE usuario_id = $1)',
+      [usuarioId]
+    );
+
+    // 2. Deleta vendas onde o usuário é vendedor
+    await db.query('DELETE FROM vendas WHERE vendedor_id = $1', [usuarioId]);
+
+    // 3. Deleta perfumes do usuário
+    await db.query('DELETE FROM perfumes WHERE usuario_id = $1', [usuarioId]);
+
+    // 4. Deleta o usuário
+    const result = await db.query(
+      'DELETE FROM usuarios WHERE id = $1 RETURNING id',
+      [usuarioId]
+    );
+
+    if (result.rows.length === 0) {
+      await db.query('ROLLBACK');
+      return res.status(404).json({ error: 'Usuário não encontrado' });
+    }
+
+    await db.query('COMMIT');
+    console.log(`✅ Usuário ${usuarioId} excluído com sucesso`);
+    return res.json({ message: 'Usuário e todos os registros associados excluídos com sucesso' });
+
+  } catch (error) {
+    await db.query('ROLLBACK');
+    console.error('❌ ERRO NO DELETE:', error);
+    return res.status(500).json({
+      error: error.message,
+      code: error.code,
+      detail: error.detail
+    });
+  }
+}
 }
 
 module.exports = new UsuarioController();
