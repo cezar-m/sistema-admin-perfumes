@@ -73,27 +73,23 @@ class UsuarioController {
   const usuarioId = req.params.id;
   const loggedUsuarioId = req.usuarioId;
 
+  // Não deixa excluir a própria conta
   if (Number(usuarioId) === Number(loggedUsuarioId)) {
     return res.status(403).json({ error: 'Você não pode excluir sua própria conta' });
   }
 
   try {
-    console.log(`🗑️ Deletando usuário ${usuarioId}...`);
+    console.log(`🗑️ Deletando usuário ${usuarioId} e seus perfumes...`);
     await db.query('BEGIN');
 
-    // 1. Deleta vendas que referenciam perfumes do usuário
-    await db.query(
-      'DELETE FROM vendas WHERE perfume_id IN (SELECT id FROM perfumes WHERE usuario_id = $1)',
+    // 1. Deleta todos os perfumes do usuário (por causa da chave estrangeira)
+    const deletePerfumes = await db.query(
+      'DELETE FROM perfumes WHERE usuario_id = $1',
       [usuarioId]
     );
+    console.log(`✅ ${deletePerfumes.rowCount} perfumes deletados`);
 
-    // 2. Deleta vendas onde o usuário é vendedor
-    await db.query('DELETE FROM vendas WHERE vendedor_id = $1', [usuarioId]);
-
-    // 3. Deleta perfumes do usuário
-    await db.query('DELETE FROM perfumes WHERE usuario_id = $1', [usuarioId]);
-
-    // 4. Deleta o usuário
+    // 2. Deleta o usuário
     const result = await db.query(
       'DELETE FROM usuarios WHERE id = $1 RETURNING id',
       [usuarioId]
@@ -106,11 +102,20 @@ class UsuarioController {
 
     await db.query('COMMIT');
     console.log(`✅ Usuário ${usuarioId} excluído com sucesso`);
-    return res.json({ message: 'Usuário e todos os registros associados excluídos com sucesso' });
+    return res.json({ message: 'Usuário e perfumes excluídos com sucesso' });
 
   } catch (error) {
     await db.query('ROLLBACK');
     console.error('❌ ERRO NO DELETE:', error);
+
+    // Se for erro de chave estrangeira (caso ainda haja dependência)
+    if (error.code === '23503') {
+      return res.status(400).json({
+        error: 'Usuário possui registros associados que não puderam ser removidos.',
+        detail: error.detail
+      });
+    }
+
     return res.status(500).json({
       error: error.message,
       code: error.code,
